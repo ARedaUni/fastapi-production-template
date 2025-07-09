@@ -1,0 +1,388 @@
+---
+alwaysApply: true
+---
+# Development Guidelines for FastAPI
+
+## Core Philosophy
+
+**TEST‑DRIVEN DEVELOPMENT IS NON‑NEGOTIABLE.** Every line of production code must originate from a failing test. No exceptions. This practice underpins every other principle in this document.
+
+## Quick Reference
+
+### Key Principles
+
+* Write tests first (TDD)
+* Test behaviour, not implementation details
+* No use of `Any` (except in extremely rare, justified cases)
+* Immutable data by default
+* Small, pure functions
+* `mypy --strict` and/or Pyright strict on every commit
+* Pydantic models are the single source of truth—tests must import them, never redefine them
+
+### Preferred Tooling
+
+| Purpose               | Tool(s)                                           |
+|  | - |
+| Language              | Python ≥ 3.12                                     |
+| Web Framework         | FastAPI (Starlette ASGI)                          |
+| Runtime Type Checking | Pydantic v2                                       |
+| Testing Framework     | pytest + pytest-asyncio                           |
+| HTTP / Web Testing    | httpx.AsyncClient + FastAPI `TestClient`, respx   |
+| Coverage              | pytest‑cov ‑‑cov‑report=term‑missing --cov=src    |
+| Static Typing         | mypy --strict; pyright (CI)                       |
+| Lint / Style          | ruff (flake8 rules + isort) + black formatting    |
+| Dependency Management | uv                                                |
+| Task Queue (optional) | Dramatiq, Celery, or RQ with typed wrappers       |
+| DI Utilities          | FastAPI’s `Depends`, or `punq` for complex graphs |
+
+
+
+## Testing Principles
+
+### Behaviour‑Driven Testing
+
+1. **No "unit vs. integration" labels** – tests verify observable behaviour through the public API (HTTP endpoint, service function, CLI command, etc.).
+2. Internal implementation details MUST remain invisible to tests.
+3. Aim for **100 % coverage of business behaviour**, *not* of lines.
+4. Every test starts red, goes green, then prompts a refactor assessment.
+
+### Testing Stack
+
+* **pytest** provides the core runner.
+* **pytest-anyio** for native async tests (`async def test_…`).
+* **httpx.AsyncClient** to hit FastAPI apps in‑process.
+* **respx** to mock outbound HTTP calls—never patch `requests`/`httpx` internals.
+* **faker‑factory** (or `factory_boy`) + custom factories for deterministic test data.
+* Use built‑in `sqlite://:memory:` for database tests; wrap each test in a transaction fixture.
+
+### Organising Tests
+
+```
+project_root/
+  app/
+    api/
+      __init__.py          # API router
+      deps.py              # Shared dependencies
+      health.py            # /health endpoint
+      v1/
+        __init__.py        # Version‑scoped router
+        home.py            # Home endpoints
+        login.py           # Auth endpoints
+        tasks.py           # Task endpoints
+        users.py           # User endpoints
+    core/
+      config.py            # Settings & env
+      database.py          # SQLAlchemy engine / session
+      redis.py             # Redis connection helpers
+      security.py          # Security utilities (hashing, JWT, etc.)
+    crud/
+      base.py              # Generic CRUD helpers
+      users.py             # User‑specific queries
+    models/
+      base.py              # SQLAlchemy Base
+      users.py             # User model
+    schemas/
+      job.py               # Pydantic schema
+      token.py             # Pydantic schema
+      user.py              # Pydantic schema
+    main.py                # FastAPI application factory
+    worker.py              # Background worker (e.g. ARQ)
+  migrations/              # Alembic revisions
+    env.py
+    versions/
+      <revision>.py
+  scripts/
+    initial_data.py        # Seed data helper
+  tests/
+    conftest.py            # Shared fixtures (e.g. async_client)
+    test_home.py           # Behaviour tests for /api/v1/home
+    api/
+      v1/
+        test_users.py      # Behaviour tests for user endpoints
+```
+
+> **Guideline :** Place tests next to the behaviour they exercise. Deep mirrors (e.g. `tests/api/v1/...`) are fine when it aids clarity, but avoid rigid 1‑to‑1 mirroring if it obscures intent.
+
+### Test Data Factories
+
+```python
+from __future__ import annotations
+from faker import Faker
+from pydantic import BaseModel
+from payments.models import PaymentRequest
+
+faker = Faker()
+
+class PaymentFactory:
+    """Factory for valid `PaymentRequest` objects."""
+
+    @staticmethod
+    def build(**overrides) -> PaymentRequest:
+        default = {
+            "card_account_id": faker.credit_card_number(),
+            "amount": 1000,
+            "source": "web",
+            "account_status": "normal",
+            "last_name": faker.last_name(),
+            "date_of_birth": "1980-01-01",
+            "paying_card_details": {
+                "cvv": "123",
+                "token": faker.uuid4(),
+            },
+            "address_details": AddressFactory.build().model_dump(),
+            "brand": "visa",
+        }
+        data = {**default, **overrides}
+        # Validate against the real schema – crashes fast if we diverge
+        return PaymentRequest.model_validate(data)
+```
+
+Key rules:
+
+* Always return fully‑populated objects.
+* Accept `**overrides` for targeted changes.
+* Validate with the real Pydantic model to catch drift.
+
+
+
+## Type‑Checking & Schemas
+
+### Strict Mode Configuration
+
+Add the following to `pyproject.toml`:
+
+```toml
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_configs = true
+warn_unused_ignores = true
+show_error_codes = true
+plugins = ["pydantic.mypy"]
+```
+
+* \*\*No \*\***`Any`** – use `typing.Any` only with explicit, justified comments.
+* \*\*No \*\***`# type: ignore`** without describing why.
+
+### Schema‑First Development with Pydantic v2
+
+```python
+from __future__ import annotations
+from pydantic import BaseModel, Field, EmailStr
+from datetime import date
+
+class Address(BaseModel):
+    house_number: str = Field(..., min_length=1)
+    house_name: str | None = None
+    address_line1: str = Field(..., min_length=1)
+    address_line2: str | None = None
+    city: str = Field(..., min_length=1)
+    postcode: str = Field(..., pattern=r"^[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}$", to_upper=True)
+
+class PayingCardDetails(BaseModel):
+    cvv: str = Field(..., pattern=r"^\d{3,4}$")
+    token: str
+
+class PaymentRequest(BaseModel):
+    card_account_id: str = Field(..., min_length=16, max_length=16)
+    amount: int = Field(..., gt=0)
+    source: Literal["web", "mobile", "api"]
+    account_status: Literal["normal", "restricted", "closed"]
+    last_name: str
+    date_of_birth: date
+    paying_card_details: PayingCardDetails
+    address_details: Address
+    brand: Literal["visa", "mastercard", "amex"]
+```
+
+* These models perform runtime validation *and* serve as the only type source for tests.
+
+
+
+## Code Style & Structure
+
+### Functional‑Light Python
+
+* Avoid side‑effects; treat data as immutable (use `dataclasses`/`BaseModel` with `frozen=True`).
+* Prefer expressions over statements.
+* Compose with simple helper functions; avoid over‑engineering with heavy FP abstractions unless genuinely useful.
+
+#### Example
+
+```python
+from __future__ import annotations
+from payments.models import PaymentRequest
+
+FREE_SHIPPING_THRESHOLD = 50
+STANDARD_SHIPPING = 5.99
+
+
+def calculate_items_total(items: list[Item]) -> float:
+    return sum(item.price * item.qty for item in items)
+
+
+def shipping_cost(total: float) -> float:
+    return 0 if total > FREE_SHIPPING_THRESHOLD else STANDARD_SHIPPING
+
+
+def process_order(order: Order) -> ProcessedOrder:
+    total = calculate_items_total(order.items)
+    return ProcessedOrder(
+        **order.model_dump(),
+        shipping=shipping_cost(total),
+        total=total + shipping_cost(total),
+    )
+```
+
+### Naming Conventions
+
+* **Functions:** `snake_case`, verb‑based (e.g. `calculate_total`)
+* **Classes / Models:** `PascalCase`
+* **Constants:** `UPPER_SNAKE_CASE`
+* **Files:** `snake_case.py`
+* **Test Files:** `test_*.py`
+
+### Comments & Docstrings
+
+* Production code should read naturally without inline comments.
+* Use \[PEP 257] docstrings for public FastAPI route handlers and libraries that will generate docs.
+
+
+
+## Prefer Options Objects
+
+Python supports keyword arguments, which naturally act as options objects. Use them liberally; avoid long positional parameter lists.
+
+```python
+# Avoid: many positional flags
+create_user(name, age, is_active, send_welcome_email)
+
+# Prefer: explicit keywords; call‑site is self‑documenting
+create_user(
+    name="Alice",
+    age=30,
+    send_welcome_email=True,
+)
+```
+
+For complex orchestrations, pass a single Pydantic model or dataclass representing the options bundle.
+
+
+
+## Development Workflow
+
+### TDD Cycle (Red → Green → Refactor)
+
+1. **Red** – write a failing pytest test describing the behaviour.
+2. **Green** – write the minimal production code to pass the test.
+3. **Refactor** – evaluate and improve structure *without altering behaviour*. Commit refactor separately.
+
+#### Example Session
+
+```python
+# test_calculate_total.py
+
+async def test_total_includes_shipping():
+    order = OrderFactory.build(items=[Item(price=30, qty=1)], shipping=5.99)
+    processed = process_order(order)
+    assert processed.total == 35.99
+    assert processed.shipping == 5.99
+```
+
+```python
+# simple implementation
+
+def process_order(order: Order) -> ProcessedOrder:
+    items_total = sum(item.price * item.qty for item in order.items)
+    shipping = order.shipping
+    return ProcessedOrder(**order.model_dump(), shipping=shipping, total=items_total + shipping)
+```
+
+Add another test for free shipping, make it red, then green, then refactor.
+
+### Refactoring Rules
+
+* Commit before refactor.
+* Ensure all tests & static analyses still pass.
+* Don’t create speculative abstractions; only remove duplication of *knowledge*.
+
+
+
+## Commit & PR Guidelines
+
+* Use [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
+* Each commit compiles & all tests pass: `black`, `ruff`, `mypy`, `pytest --cov`.
+* Keep PRs focused and small; include context in description.
+
+
+
+## Error Handling Patterns
+
+### Result Type
+
+```python
+from __future__ import annotations
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+E = TypeVar("E", bound=Exception)
+
+class Result(Generic[T, E]):
+    def __init__(self, ok: T | None = None, err: E | None = None):
+        self.ok, self.err = ok, err
+
+    @property
+    def is_ok(self) -> bool: return self.err is None
+    @property
+    def is_err(self) -> bool: return self.err is not None
+```
+
+Or, for simpler flows, use exceptions with FastAPI’s `HTTPException`.
+
+
+
+## Testing FastAPI Endpoints
+
+```python
+import pytest
+from httpx import AsyncClient
+from main import app  # FastAPI instance
+
+@pytest.mark.anyio
+async def test_create_payment_success():
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        payload = PaymentFactory.build().model_dump(mode="json")
+        response = await client.post("/payments", json=payload)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["status"] == "completed"
+```
+
+### Avoid testing implementation details like `service._validate_amount`—cover them via the API.
+
+
+
+## Common Anti‑Patterns (Python Edition)
+
+* **Global state** – causes hidden coupling, breaks async safety.
+* **Database access inside route handlers** – inject services via `Depends` instead.
+* **Long functions / nested conditionals** – refactor into pure helpers.
+* **Inconsistent async / sync mixing** – pick an async stack and stay consistent.
+* **`pass`**\*\* as TODO\*\* – use `raise NotImplementedError` so tests fail clearly.
+
+
+
+## Resources
+
+* [FastAPI Documentation](https://fastapi.tiangolo.com/)
+* [pytest Documentation](https://docs.pytest.org/en/latest/)
+* [mypy Strict Guide](https://mypy.readthedocs.io/en/stable/existing_code.html#running-mypy-with-strict-optional)
+* [Pydantic v2](https://docs.pydantic.dev/2.0/)
+* [Testing Asynchronous FastAPI](https://fastapi.tiangolo.com/advanced/async_tests/)
+* [Ruff Linter](https://github.com/astral-sh/ruff)
+
+
+
+## Summary
+
+Write clean, type‑safe, functional‑light Python, evolved through small, test‑driven steps. Every change is rooted in a failing test, advanced through the red‑green‑refactor loop, and guarded by strict static analysis. When in doubt, favour simplicity and readability over cleverness.
