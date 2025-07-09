@@ -64,6 +64,20 @@ def test_config_has_security_settings():
     assert len(settings.SECRET_KEY.get_secret_value()) > 0
 
 
+def test_config_has_oauth2_settings():
+    """Test that config has OAuth2 token settings."""
+    settings = get_settings()
+    
+    # Should have OAuth2 token expiry setting
+    assert hasattr(settings, 'ACCESS_TOKEN_EXPIRE_MINUTES')
+    assert isinstance(settings.ACCESS_TOKEN_EXPIRE_MINUTES, int)
+    assert settings.ACCESS_TOKEN_EXPIRE_MINUTES > 0
+    
+    # Should have algorithm setting for JWT
+    assert hasattr(settings, 'ALGORITHM')
+    assert isinstance(settings.ALGORITHM, str)
+
+
 def test_settings_function_is_cached():
     """Test that get_settings returns the same instance (cached)."""
     settings1 = get_settings()

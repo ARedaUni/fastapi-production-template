@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     
     # Security
     SECRET_KEY: SecretStr = SecretStr("your-secret-key-change-in-production")
+    
+    # OAuth2 / JWT settings
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ALGORITHM: str = "HS256"
 
 
 @lru_cache
