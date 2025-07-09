@@ -54,5 +54,9 @@ def get_settings() -> Settings:
     return Settings()
 
 
+# Create settings instance once at module level
+settings = get_settings()
+
+
 
 

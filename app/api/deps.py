@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 
-from app.core.config import get_settings
+from app.core.config import settings
 from app.core.security import decode_access_token, get_user
 from app.schemas.token import TokenData
 from app.schemas.user import User
@@ -15,7 +15,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/token")
 
 async def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     """Get the current authenticated user from JWT token."""
-    settings = get_settings()
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 
 from app.api.deps import get_current_active_user
-from app.core.config import get_settings
+from app.core.config import settings
 from app.core.security import authenticate_user, create_access_token
 from app.schemas.token import Token
 from app.schemas.user import User
@@ -21,8 +21,6 @@ async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> Token:
     """Login endpoint that returns JWT access token."""
-    settings = get_settings()
-    
     user = authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
