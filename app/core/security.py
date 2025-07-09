@@ -5,12 +5,10 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import bcrypt
 import jwt
-from passlib.context import CryptContext
 
 from app.schemas.user import User, UserInDB
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Simple in-memory user database for testing
 # In production, this would be replaced with database queries
@@ -20,7 +18,7 @@ fake_users_db = {
         email="test@example.com",
         full_name="Test User",
         disabled=False,
-        hashed_password="$2b$12$7kNiLErBvtTiMPSTDj28Aef46.xEiN1M2vzKLJo5U/F4nEqTtRUmm"  # "testpass"
+        hashed_password="$2b$12$X1WH9O.A14cNwQA/XtQR0.zgOOvdt9E1t3/dWEZMSNf6krnMDHcaa"  # "testpass"
     )
 }
 
@@ -38,13 +36,14 @@ def create_access_token(user: User, secret_key: str, algorithm: str, expires_del
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plaintext password against its hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify a plaintext password against its hash using bcrypt."""
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password."""
-    return pwd_context.hash(password)
+    """Hash a password using bcrypt."""
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 
 def decode_access_token(token: str, secret_key: str, algorithm: str) -> dict[str, Any] | None:
