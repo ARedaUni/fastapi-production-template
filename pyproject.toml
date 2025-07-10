@@ -16,5 +16,6 @@ dependencies = [
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",
     "python-multipart>=0.0.20",
+    "slowapi>=0.1.9",
     "trio>=0.30.0",
 ]

@@ -4,31 +4,9 @@ existing solutions are either old or very lackluster, or very very complex(the o
 
 I want something anyone can use off the bat that is reliable which requires minimal configuration. 
 
+we need to fix three things:
 
-some more changes that i need:
-Scope Support:
-Simple implementation for permission control
-Crucial for API security even in lightweight apps
-app/schemas
-class TokenData(BaseModel):
-    """Token payload data."""
-    username: str | None = None
-    scopes: list[str] = []
-Rate Limiting:
-Basic protection against abuse
-Can be implemented with simple middleware
-CORS Configuration:
-Missing in your FastAPI setup
-Essential for browser clients
-app
-Health Check Endpoint:
-Missing but needed for deployment monitoring
-Structured Logging:
-No logging configuration visible
-Critical for production troubleshooting
-Environment Variable Validation:
-Your settings use hardcoded defaults
-Should validate required env vars on startup
-Database Migrations:
-No migration system visible
-Essential for production database changes
+a. DB migration probably with alembic
+b. structured logging
+c. easy to opt out of observabiliyt
+d. fix the rate limiting which is a bit dodgy
