@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.core.database import get_session
 from app.schemas.token import Token, AccessTokenResponse, RefreshTokenRequest
 from app.schemas.user import User, UserCreate
-from app.core.security import authenticate_user, get_user, create_user, user_exists, convert_user_in_db_to_user, get_token_service, OAuth2Error
+from app.core.security import authenticate_user, get_user, create_user, user_exists, convert_user_in_db_to_user, get_token_service, OAuth2Error, get_token_blacklist
 
 router = APIRouter()
 
@@ -176,6 +176,23 @@ async def refresh_access_token(
         token_type="bearer",
         expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
+
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    current_user: Annotated[User, Depends(get_current_user)]
+) -> dict[str, str]:
+    """Logout the current user by invalidating their token."""
+    # Extract JTI from token and blacklist it
+    token_service = get_token_service()
+    payload = token_service.decode_access_token(token)
+    
+    if payload and payload.get("jti"):
+        blacklist = get_token_blacklist()
+        blacklist.blacklist_token(payload["jti"])
+    
+    return {"message": "Successfully logged out"}
 
 
 @router.get("/users/me", response_model=User)

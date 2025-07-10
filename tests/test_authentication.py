@@ -264,4 +264,48 @@ async def test_token_has_correct_structure(async_client):
     assert len(data["access_token"]) > 0
 
 
+@pytest.mark.anyio
+async def test_logout_endpoint_exists_and_requires_authentication(async_client):
+    """Test that logout endpoint exists and requires authentication."""
+    response = await async_client.post("/api/v1/logout")
+    
+    assert response.status_code == 401
+    data = response.json()
+    assert "detail" in data
+
+
+@pytest.mark.anyio
+async def test_logout_invalidates_current_token(async_client):
+    """Test that logout invalidates the current token."""
+    # First login to get token
+    login_response = await async_client.post(
+        "/api/v1/token",
+        data={"username": "testuser", "password": "testpass"}
+    )
+    token = login_response.json()["access_token"]
+    
+    # Verify token works before logout
+    response = await async_client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 200
+    
+    # Logout
+    logout_response = await async_client.post(
+        "/api/v1/logout",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert logout_response.status_code == 200
+    
+    # Try to use the same token after logout (should fail)
+    response = await async_client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    assert response.status_code == 401
+    data = response.json()
+    assert "detail" in data
+
+
  

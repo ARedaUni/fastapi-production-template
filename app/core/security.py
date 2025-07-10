@@ -16,6 +16,30 @@ from app.models.user import User as UserModel
 from app.schemas.user import User, UserInDB
 
 
+class TokenBlacklist:
+    """Simple in-memory token blacklist service."""
+    
+    def __init__(self):
+        self._blacklisted_tokens: set[str] = set()
+    
+    def blacklist_token(self, jti: str) -> None:
+        """Add a token JTI to the blacklist."""
+        self._blacklisted_tokens.add(jti)
+    
+    def is_blacklisted(self, jti: str) -> bool:
+        """Check if a token JTI is blacklisted."""
+        return jti in self._blacklisted_tokens
+
+
+# Global instance - in production this should be Redis or database
+_token_blacklist = TokenBlacklist()
+
+
+def get_token_blacklist() -> TokenBlacklist:
+    """Get the token blacklist service."""
+    return _token_blacklist
+
+
 class OAuth2Error(Exception):
     """OAuth2 compliant error exception."""
     
@@ -90,6 +114,11 @@ class TokenService:
             
             # Verify token type
             if payload.get("type") != expected_type.value:
+                return None
+            
+            # Check if token is blacklisted
+            jti = payload.get("jti")
+            if jti and get_token_blacklist().is_blacklisted(jti):
                 return None
                 
             return payload
