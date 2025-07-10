@@ -23,12 +23,12 @@ class Settings(BaseSettings):
     V1_STR: str = "/api/v1"
     
     
-    # Database components 
-    POSTGRES_HOST: str = "localhost"
-    POSTGRES_DB: str = "fastapi_db"
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: SecretStr = SecretStr("postgres")
-    DATABASE_URL: str = None
+    # Database components - REQUIRED in production
+    POSTGRES_HOST: str
+    POSTGRES_DB: str  
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: SecretStr
+    DATABASE_URL: str | None = None
     TEST_DATABASE_URL: str = "sqlite+aiosqlite:///:memory:"
     
     @field_validator("DATABASE_URL", mode="before")
@@ -45,8 +45,8 @@ class Settings(BaseSettings):
             db=values.get("POSTGRES_DB"),
         )
     
-    # Redis components
-    REDIS_HOST: str = "localhost"
+    # Redis components - REQUIRED in production  
+    REDIS_HOST: str
     REDIS_PORT: int = 6379
     
     # Environment
@@ -103,13 +103,44 @@ class Settings(BaseSettings):
         
         return base_origins
     
-    # Security
-    SECRET_KEY: SecretStr = SecretStr("your-secret-key-change-in-production")
+    # Security - REQUIRED, no defaults
+    SECRET_KEY: SecretStr
     
-    # OAuth2 / JWT settings
+    # OAuth2 / JWT settings  
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     ALGORITHM: str = "HS256"
+    
+    @field_validator("SECRET_KEY", mode="before")
+    @classmethod
+    def validate_secret_key(cls, v: str | SecretStr | None, info) -> SecretStr:
+        """Validate SECRET_KEY is provided and secure enough."""
+        if v is None:
+            raise ValueError("SECRET_KEY is required")
+        
+        # Convert to SecretStr if it's a string
+        if isinstance(v, str):
+            v = SecretStr(v)
+        
+        secret_value = v.get_secret_value()
+        
+        # Check for insecure default values
+        insecure_defaults = [
+            "your-secret-key-change-in-production",
+            "secret",
+            "password",
+            "changeme",
+            "development"
+        ]
+        
+        if secret_value.lower() in insecure_defaults:
+            raise ValueError(f"SECRET_KEY cannot be a default/insecure value: {secret_value}")
+        
+        # Minimum length check
+        if len(secret_value) < 32:
+            raise ValueError("SECRET_KEY must be at least 32 characters long")
+        
+        return v
 
 
 @lru_cache
