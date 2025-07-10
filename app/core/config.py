@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: SecretStr = SecretStr("postgres")
     DATABASE_URL: str = None
+    TEST_DATABASE_URL: str = "sqlite+aiosqlite:///:memory:"
     
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

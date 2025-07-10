@@ -12,8 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_session
 from app.schemas.token import Token
-from app.schemas.user import User
-from app.core.security import authenticate_user, create_access_token, decode_access_token, get_user
+from app.schemas.user import User, UserCreate
+from app.core.security import authenticate_user, create_access_token, decode_access_token, get_user, create_user, user_exists
 
 router = APIRouter()
 
@@ -56,6 +56,39 @@ async def get_current_user(
         full_name=user.full_name,
         disabled=user.disabled
     )
+
+
+@router.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
+async def register_user(
+    user_data: UserCreate,
+    session: Annotated[AsyncSession, Depends(get_session)]
+) -> User:
+    """Register a new user."""
+    # Check if username or email already exists
+    existing = await user_exists(session, user_data.username, user_data.email)
+    
+    if existing["username_exists"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already registered"
+        )
+    
+    if existing["email_exists"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+    
+    # Create new user
+    user = await create_user(
+        session=session,
+        username=user_data.username,
+        email=user_data.email,
+        full_name=user_data.full_name,
+        password=user_data.password
+    )
+    
+    return user
 
 
 @router.post("/token", response_model=Token)

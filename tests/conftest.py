@@ -1,21 +1,22 @@
-
+import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.core.database import get_session
+from app.core.config import settings
 from app.main import app
 from app.models.base import Base
 from app.models.user import User
 from app.core.security import get_password_hash
-import pytest_asyncio
+
 
 # Test database URL - use in-memory SQLite for testing
-TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
 
 # Create test engine
 test_engine = create_async_engine(
-    TEST_DATABASE_URL,
+    settings.TEST_DATABASE_URL,
     echo=False,
     future=True,
 )

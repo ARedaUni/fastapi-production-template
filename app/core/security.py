@@ -64,6 +64,24 @@ async def get_user(session: AsyncSession, username: str) -> UserInDB | None:
     )
 
 
+async def user_exists(session: AsyncSession, username: str, email: str) -> dict[str, bool]:
+    """Check if username or email already exists."""
+    # Check username
+    username_stmt = select(UserModel).where(UserModel.username == username)
+    username_result = await session.execute(username_stmt)
+    username_exists = username_result.scalar_one_or_none() is not None
+    
+    # Check email
+    email_stmt = select(UserModel).where(UserModel.email == email)
+    email_result = await session.execute(email_stmt)
+    email_exists = email_result.scalar_one_or_none() is not None
+    
+    return {
+        "username_exists": username_exists,
+        "email_exists": email_exists
+    }
+
+
 async def authenticate_user(session: AsyncSession, username: str, password: str) -> User | None:
     """Authenticate a user with username and password."""
     user = await get_user(session, username)
