@@ -13,12 +13,13 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
     V1_STR: str = "/api/v1"
     
+    
     # Database components 
     POSTGRES_HOST: str = "localhost"
     POSTGRES_DB: str = "fastapi_db"
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: SecretStr = SecretStr("postgres")
-    DATABASE_URL: Optional[str] = None
+    DATABASE_URL: str = None
     
     @field_validator("DATABASE_URL", mode="before")
     @classmethod

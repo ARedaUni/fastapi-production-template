@@ -7,20 +7,11 @@ from typing import Any
 
 import bcrypt
 import jwt
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.user import User as UserModel
 from app.schemas.user import User, UserInDB
-
-# Simple in-memory user database for testing
-# In production, this would be replaced with database queries
-fake_users_db = {
-    "testuser": UserInDB(
-        username="testuser",
-        email="test@example.com",
-        full_name="Test User",
-        disabled=False,
-        hashed_password="$2b$12$X1WH9O.A14cNwQA/XtQR0.zgOOvdt9E1t3/dWEZMSNf6krnMDHcaa"  # "testpass"
-    )
-}
 
 
 def create_access_token(user: User, secret_key: str, algorithm: str, expires_delta: timedelta | None = None, default_expire_minutes: int = 30) -> str:
@@ -55,14 +46,27 @@ def decode_access_token(token: str, secret_key: str, algorithm: str) -> dict[str
         return None
 
 
-def get_user(username: str) -> UserInDB | None:
+async def get_user(session: AsyncSession, username: str) -> UserInDB | None:
     """Get user from the database by username."""
-    return fake_users_db.get(username)
+    stmt = select(UserModel).where(UserModel.username == username)
+    result = await session.execute(stmt)
+    user_model = result.scalar_one_or_none()
+    
+    if not user_model:
+        return None
+    
+    return UserInDB(
+        username=user_model.username,
+        email=user_model.email,
+        full_name=user_model.full_name,
+        disabled=not user_model.is_active,
+        hashed_password=user_model.hashed_password
+    )
 
 
-def authenticate_user(username: str, password: str) -> User | None:
+async def authenticate_user(session: AsyncSession, username: str, password: str) -> User | None:
     """Authenticate a user with username and password."""
-    user = get_user(username)
+    user = await get_user(session, username)
     if not user:
         return None
     if not verify_password(password, user.hashed_password):
@@ -76,4 +80,29 @@ def authenticate_user(username: str, password: str) -> User | None:
         email=user.email,
         full_name=user.full_name,
         disabled=user.disabled
-    ) 
+    )
+
+
+async def create_user(session: AsyncSession, username: str, email: str, full_name: str, password: str) -> User:
+    """Create a new user in the database."""
+    hashed_password = get_password_hash(password)
+    
+    user_model = UserModel(
+        username=username,
+        email=email,
+        full_name=full_name,
+        hashed_password=hashed_password,
+        is_active=True,
+        is_superuser=False
+    )
+    
+    session.add(user_model)
+    await session.commit()
+    await session.refresh(user_model)
+    
+    return User(
+        username=user_model.username,
+        email=user_model.email,
+        full_name=user_model.full_name,
+        disabled=not user_model.is_active
+    )

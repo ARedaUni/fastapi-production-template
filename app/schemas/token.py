@@ -1,4 +1,4 @@
-"""Pydantic schemas for authentication tokens."""
+"""Token schemas for OAuth2 authentication."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ from pydantic import BaseModel
 
 
 class Token(BaseModel):
-    """Response model for OAuth2 token."""
+    """OAuth2 token response."""
     access_token: str
     token_type: str
 
 
 class TokenData(BaseModel):
-    """Data contained within a JWT token."""
-    username: str | None = None 
+    """Token payload data."""
+    username: str | None = None
