@@ -48,12 +48,24 @@ class Settings(BaseSettings):
     
     # OAuth2 / JWT settings
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     ALGORITHM: str = "HS256"
 
 
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+@lru_cache
+def get_token_service():
+    """Get configured TokenService instance."""
+    from app.core.security import TokenService
+    settings = get_settings()
+    return TokenService(
+        secret_key=settings.SECRET_KEY.get_secret_value(),
+        algorithm=settings.ALGORITHM
+    )
 
 
 # Create settings instance once at module level

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from enum import Enum
 
 import bcrypt
 import jwt
@@ -14,16 +16,83 @@ from app.models.user import User as UserModel
 from app.schemas.user import User, UserInDB
 
 
-def create_access_token(user: User, secret_key: str, algorithm: str, expires_delta: timedelta | None = None, default_expire_minutes: int = 30) -> str:
-    """Create a JWT access token for a user."""
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=default_expire_minutes)
+class TokenType(str, Enum):
+    """Token type enumeration."""
+    ACCESS = "access"
+    REFRESH = "refresh"
+
+
+class TokenService:
+    """Service for creating and validating JWT tokens."""
     
-    to_encode = {"sub": user.username, "exp": expire}
-    encoded_jwt = jwt.encode(to_encode, secret_key, algorithm=algorithm)
-    return encoded_jwt
+    def __init__(self, secret_key: str, algorithm: str):
+        self.secret_key = secret_key
+        self.algorithm = algorithm
+    
+    def _create_token(
+        self,
+        user: User,
+        token_type: TokenType,
+        expires_delta: timedelta,
+        jti_length: int = 8
+    ) -> str:
+        """Create a JWT token with common logic."""
+        expire = datetime.now(timezone.utc) + expires_delta
+        
+        to_encode = {
+            "sub": user.username,
+            "type": token_type.value,
+            "exp": expire,
+            "iat": datetime.now(timezone.utc),
+            "jti": secrets.token_urlsafe(jti_length)
+        }
+        
+        return jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
+    
+    def create_access_token(
+        self,
+        user: User,
+        expires_delta: timedelta | None = None,
+        default_expire_minutes: int = 30
+    ) -> str:
+        """Create a JWT access token for a user."""
+        if expires_delta is None:
+            expires_delta = timedelta(minutes=default_expire_minutes)
+        
+        return self._create_token(user, TokenType.ACCESS, expires_delta, jti_length=8)
+    
+    def create_refresh_token(
+        self,
+        user: User,
+        expires_delta: timedelta | None = None,
+        default_expire_days: int = 7
+    ) -> str:
+        """Create a JWT refresh token for a user."""
+        if expires_delta is None:
+            expires_delta = timedelta(days=default_expire_days)
+        
+        return self._create_token(user, TokenType.REFRESH, expires_delta, jti_length=16)
+    
+    def _decode_token(self, token: str, expected_type: TokenType) -> dict[str, Any] | None:
+        """Decode and validate a JWT token with common logic."""
+        try:
+            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            
+            # Verify token type
+            if payload.get("type") != expected_type.value:
+                return None
+                
+            return payload
+        except jwt.PyJWTError:
+            return None
+    
+    def decode_access_token(self, token: str) -> dict[str, Any] | None:
+        """Decode and verify a JWT access token."""
+        return self._decode_token(token, TokenType.ACCESS)
+    
+    def decode_refresh_token(self, token: str) -> dict[str, Any] | None:
+        """Decode and verify a JWT refresh token."""
+        return self._decode_token(token, TokenType.REFRESH)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -37,13 +106,25 @@ def get_password_hash(password: str) -> str:
     return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
 
 
-def decode_access_token(token: str, secret_key: str, algorithm: str) -> dict[str, Any] | None:
-    """Decode and verify a JWT access token."""
-    try:
-        payload = jwt.decode(token, secret_key, algorithms=[algorithm])
-        return payload
-    except jwt.PyJWTError:
-        return None
+def convert_user_model_to_schema(user_model: UserModel) -> UserInDB:
+    """Convert UserModel to UserInDB schema."""
+    return UserInDB(
+        username=user_model.username,
+        email=user_model.email,
+        full_name=user_model.full_name,
+        disabled=not user_model.is_active,
+        hashed_password=user_model.hashed_password
+    )
+
+
+def convert_user_in_db_to_user(user_in_db: UserInDB) -> User:
+    """Convert UserInDB to User schema (without password)."""
+    return User(
+        username=user_in_db.username,
+        email=user_in_db.email,
+        full_name=user_in_db.full_name,
+        disabled=user_in_db.disabled
+    )
 
 
 async def get_user(session: AsyncSession, username: str) -> UserInDB | None:
@@ -55,13 +136,7 @@ async def get_user(session: AsyncSession, username: str) -> UserInDB | None:
     if not user_model:
         return None
     
-    return UserInDB(
-        username=user_model.username,
-        email=user_model.email,
-        full_name=user_model.full_name,
-        disabled=not user_model.is_active,
-        hashed_password=user_model.hashed_password
-    )
+    return convert_user_model_to_schema(user_model)
 
 
 async def user_exists(session: AsyncSession, username: str, email: str) -> dict[str, bool]:
@@ -92,13 +167,7 @@ async def authenticate_user(session: AsyncSession, username: str, password: str)
     if user.disabled:
         return None
     
-    # Return User without hashed_password
-    return User(
-        username=user.username,
-        email=user.email,
-        full_name=user.full_name,
-        disabled=user.disabled
-    )
+    return convert_user_in_db_to_user(user)
 
 
 async def create_user(session: AsyncSession, username: str, email: str, full_name: str, password: str) -> User:
@@ -118,9 +187,4 @@ async def create_user(session: AsyncSession, username: str, email: str, full_nam
     await session.commit()
     await session.refresh(user_model)
     
-    return User(
-        username=user_model.username,
-        email=user_model.email,
-        full_name=user_model.full_name,
-        disabled=not user_model.is_active
-    )
+    return convert_user_in_db_to_user(convert_user_model_to_schema(user_model))

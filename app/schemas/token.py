@@ -6,9 +6,21 @@ from pydantic import BaseModel
 
 
 class Token(BaseModel):
-    """OAuth2 token response."""
+    """OAuth2 token response with both access and refresh tokens."""
+    access_token: str
+    refresh_token: str
+    token_type: str
+
+
+class AccessTokenResponse(BaseModel):
+    """Response schema for refresh token endpoint (only access token)."""
     access_token: str
     token_type: str
+
+
+class RefreshTokenRequest(BaseModel):
+    """Schema for refresh token requests."""
+    refresh_token: str
 
 
 class TokenData(BaseModel):
