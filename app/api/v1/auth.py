@@ -13,7 +13,7 @@ from app.core.config import settings
 from app.core.database import get_session
 from app.schemas.token import Token, AccessTokenResponse, RefreshTokenRequest
 from app.schemas.user import User, UserCreate
-from app.core.security import authenticate_user, get_user, create_user, user_exists, convert_user_in_db_to_user, get_token_service
+from app.core.security import authenticate_user, get_user, create_user, user_exists, convert_user_in_db_to_user, get_token_service, OAuth2Error
 
 router = APIRouter()
 
@@ -94,10 +94,10 @@ async def login_for_access_token(
     """Login endpoint that returns access and refresh tokens."""
     user = await authenticate_user(session, form_data.username, form_data.password)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+        raise OAuth2Error(
+            error="invalid_grant",
+            error_description="Invalid username or password",
+            status_code=status.HTTP_401_UNAUTHORIZED
         )
     
     token_service = get_token_service()
@@ -118,7 +118,8 @@ async def login_for_access_token(
     return Token(
         access_token=access_token,
         refresh_token=refresh_token,
-        token_type="bearer"
+        token_type="bearer",
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
 
 
@@ -128,27 +129,34 @@ async def refresh_access_token(
     session: Annotated[AsyncSession, Depends(get_session)]
 ) -> AccessTokenResponse:
     """Use refresh token to get a new access token."""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid refresh token",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
     
     token_service = get_token_service()
     
     # Decode and validate refresh token
     payload = token_service.decode_refresh_token(refresh_request.refresh_token)
     if payload is None:
-        raise credentials_exception
+        raise OAuth2Error(
+            error="invalid_grant",
+            error_description="Invalid refresh token",
+            status_code=status.HTTP_401_UNAUTHORIZED
+        )
     
     username: str = payload.get("sub")
     if username is None:
-        raise credentials_exception
+        raise OAuth2Error(
+            error="invalid_grant",
+            error_description="Invalid refresh token",
+            status_code=status.HTTP_401_UNAUTHORIZED
+        )
     
     # Get user from database
     user = await get_user(session, username)
     if user is None:
-        raise credentials_exception
+        raise OAuth2Error(
+            error="invalid_grant",
+            error_description="Invalid refresh token",
+            status_code=status.HTTP_401_UNAUTHORIZED
+        )
     
     if user.disabled:
         raise HTTPException(
@@ -165,7 +173,8 @@ async def refresh_access_token(
     
     return AccessTokenResponse(
         access_token=access_token,
-        token_type="bearer"
+        token_type="bearer",
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
 
 

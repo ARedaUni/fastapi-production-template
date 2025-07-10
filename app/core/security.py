@@ -16,6 +16,16 @@ from app.models.user import User as UserModel
 from app.schemas.user import User, UserInDB
 
 
+class OAuth2Error(Exception):
+    """OAuth2 compliant error exception."""
+    
+    def __init__(self, error: str, error_description: str, status_code: int = 400):
+        self.error = error
+        self.error_description = error_description
+        self.status_code = status_code
+        super().__init__(error_description)
+
+
 class TokenType(str, Enum):
     """Token type enumeration."""
     ACCESS = "access"

@@ -10,12 +10,14 @@ class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str
+    expires_in: int
 
 
 class AccessTokenResponse(BaseModel):
     """Response schema for refresh token endpoint (only access token)."""
     access_token: str
     token_type: str
+    expires_in: int
 
 
 class RefreshTokenRequest(BaseModel):

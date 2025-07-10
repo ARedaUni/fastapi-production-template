@@ -36,6 +36,11 @@ async def test_login_returns_refresh_token(async_client):
     assert "token_type" in data
     assert data["token_type"] == "bearer"
     
+    # Verify expires_in field
+    assert "expires_in" in data
+    assert isinstance(data["expires_in"], int)
+    assert data["expires_in"] == 1800  # 30 minutes in seconds
+    
     # Both tokens should be non-empty strings
     assert isinstance(data["access_token"], str)
     assert isinstance(data["refresh_token"], str)
@@ -74,6 +79,11 @@ async def test_refresh_token_gets_new_access_token(async_client):
     assert "token_type" in refresh_data
     assert refresh_data["token_type"] == "bearer"
     
+    # Verify expires_in field in refresh response
+    assert "expires_in" in refresh_data
+    assert isinstance(refresh_data["expires_in"], int)
+    assert refresh_data["expires_in"] == 1800  # 30 minutes in seconds
+    
     # New access token should be different from original
     new_access_token = refresh_data["access_token"]
     assert isinstance(new_access_token, str)
@@ -83,7 +93,7 @@ async def test_refresh_token_gets_new_access_token(async_client):
 
 @pytest.mark.anyio
 async def test_refresh_with_invalid_token_fails(async_client):
-    """Test that using an invalid refresh token returns 401."""
+    """Test that using an invalid refresh token returns OAuth2 error format."""
     response = await async_client.post(
         "/api/v1/refresh",
         json={"refresh_token": "invalid_refresh_token"}
@@ -91,8 +101,30 @@ async def test_refresh_with_invalid_token_fails(async_client):
     
     assert response.status_code == 401
     data = response.json()
-    assert "detail" in data
-    assert "Invalid refresh token" in data["detail"]
+    
+    # Should return OAuth2 error format
+    assert "error" in data
+    assert "error_description" in data
+    assert data["error"] == "invalid_grant"
+    assert "Invalid refresh token" in data["error_description"]
+
+
+@pytest.mark.anyio
+async def test_login_missing_parameters_returns_oauth2_error(async_client):
+    """Test that login with missing parameters returns OAuth2 invalid_request error."""
+    response = await async_client.post(
+        "/api/v1/token",
+        data={"username": "testuser"}  # Missing password
+    )
+    
+    assert response.status_code == 400
+    data = response.json()
+    
+    # Should return OAuth2 error format for missing required parameters
+    assert "error" in data
+    assert "error_description" in data
+    assert data["error"] == "invalid_request"
+    assert "password" in data["error_description"].lower()
 
 
 @pytest.mark.anyio
@@ -116,8 +148,12 @@ async def test_refresh_with_access_token_fails(async_client):
     
     assert refresh_response.status_code == 401
     data = refresh_response.json()
-    assert "detail" in data
-    assert "Invalid refresh token" in data["detail"]
+    
+    # Should return OAuth2 error format
+    assert "error" in data
+    assert "error_description" in data
+    assert data["error"] == "invalid_grant"
+    assert "Invalid refresh token" in data["error_description"]
 
 
 @pytest.mark.anyio
@@ -146,7 +182,7 @@ async def test_access_protected_route_with_refresh_token_fails(async_client):
 
 @pytest.mark.anyio
 async def test_login_with_invalid_credentials(async_client):
-    """Test that login with invalid credentials returns 401."""
+    """Test that login with invalid credentials returns OAuth2 error format."""
     response = await async_client.post(
         "/api/v1/token",
         data={"username": "wronguser", "password": "wrongpass"}
@@ -154,7 +190,12 @@ async def test_login_with_invalid_credentials(async_client):
     
     assert response.status_code == 401
     data = response.json()
-    assert "detail" in data
+    
+    # Should return OAuth2 error format instead of FastAPI's default
+    assert "error" in data
+    assert "error_description" in data
+    assert data["error"] == "invalid_grant"
+    assert "Invalid username or password" in data["error_description"]
 
 
 @pytest.mark.anyio
@@ -220,4 +261,7 @@ async def test_token_has_correct_structure(async_client):
     
     # Token should be a non-empty string
     assert isinstance(data["access_token"], str)
-    assert len(data["access_token"]) > 0 
+    assert len(data["access_token"]) > 0
+
+
+ 
