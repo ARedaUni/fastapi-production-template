@@ -6,8 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.database import get_session
 from app.core.config import settings
 from app.main import app
-from app.models.base import Base
-from app.models.user import User
+from app.models import Base, User
 from app.core.security import get_password_hash
 
 

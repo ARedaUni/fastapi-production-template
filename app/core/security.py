@@ -12,7 +12,7 @@ import jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User as UserModel
+from app.models import User as UserModel
 from app.schemas.user import User, UserInDB
 
 
