@@ -82,6 +82,69 @@ async def test_refresh_token_gets_new_access_token(async_client):
 
 
 @pytest.mark.anyio
+async def test_refresh_with_invalid_token_fails(async_client):
+    """Test that using an invalid refresh token returns 401."""
+    response = await async_client.post(
+        "/api/v1/refresh",
+        json={"refresh_token": "invalid_refresh_token"}
+    )
+    
+    assert response.status_code == 401
+    data = response.json()
+    assert "detail" in data
+    assert "Invalid refresh token" in data["detail"]
+
+
+@pytest.mark.anyio
+async def test_refresh_with_access_token_fails(async_client):
+    """Test that using an access token as refresh token returns 401."""
+    # First login to get tokens
+    login_response = await async_client.post(
+        "/api/v1/token",
+        data={"username": "testuser", "password": "testpass"}
+    )
+    
+    assert login_response.status_code == 200
+    login_data = login_response.json()
+    access_token = login_data["access_token"]  # This is an access token, not refresh
+    
+    # Try to use access token as refresh token (should fail)
+    refresh_response = await async_client.post(
+        "/api/v1/refresh",
+        json={"refresh_token": access_token}
+    )
+    
+    assert refresh_response.status_code == 401
+    data = refresh_response.json()
+    assert "detail" in data
+    assert "Invalid refresh token" in data["detail"]
+
+
+@pytest.mark.anyio
+async def test_access_protected_route_with_refresh_token_fails(async_client):
+    """Test that refresh token cannot be used to access protected routes."""
+    # First login to get tokens
+    login_response = await async_client.post(
+        "/api/v1/token",
+        data={"username": "testuser", "password": "testpass"}
+    )
+    
+    assert login_response.status_code == 200
+    login_data = login_response.json()
+    refresh_token = login_data["refresh_token"]
+    
+    # Try to access protected route with refresh token (should fail)
+    response = await async_client.get(
+        "/api/v1/users/me",
+        headers={"Authorization": f"Bearer {refresh_token}"}
+    )
+    
+    assert response.status_code == 401
+    data = response.json()
+    assert "detail" in data
+
+
+@pytest.mark.anyio
 async def test_login_with_invalid_credentials(async_client):
     """Test that login with invalid credentials returns 401."""
     response = await async_client.post(

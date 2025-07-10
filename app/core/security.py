@@ -95,6 +95,15 @@ class TokenService:
         return self._decode_token(token, TokenType.REFRESH)
 
 
+def get_token_service() -> TokenService:
+    """Get configured TokenService instance."""
+    from app.core.config import settings
+    return TokenService(
+        secret_key=settings.SECRET_KEY.get_secret_value(),
+        algorithm=settings.ALGORITHM
+    )
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plaintext password against its hash using bcrypt."""
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))

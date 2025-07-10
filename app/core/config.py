@@ -57,17 +57,6 @@ def get_settings() -> Settings:
     return Settings()
 
 
-@lru_cache
-def get_token_service():
-    """Get configured TokenService instance."""
-    from app.core.security import TokenService
-    settings = get_settings()
-    return TokenService(
-        secret_key=settings.SECRET_KEY.get_secret_value(),
-        algorithm=settings.ALGORITHM
-    )
-
-
 # Create settings instance once at module level
 settings = get_settings()
 
