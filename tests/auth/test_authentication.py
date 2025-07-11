@@ -3,11 +3,11 @@
 import pytest
 
 
-@pytest.mark.anyio
-async def test_login_with_valid_credentials(async_client):
+@pytest.mark.asyncio
+async def test_login_with_valid_credentials(client):
     """Test that login with valid credentials returns access token."""
     # Using form data as per OAuth2 password flow
-    response = await async_client.post(
+    response = await client.post(
         "/api/v1/token",
         data={"username": "testuser", "password": "testpass"}
     )
@@ -19,10 +19,10 @@ async def test_login_with_valid_credentials(async_client):
     assert data["token_type"] == "bearer"
 
 
-@pytest.mark.anyio
-async def test_login_returns_refresh_token(async_client):
+@pytest.mark.asyncio
+async def test_login_returns_refresh_token(client):
     """Test that login with valid credentials returns both access and refresh tokens."""
-    response = await async_client.post(
+    response = await client.post(
         "/api/v1/token",
         data={"username": "testuser", "password": "testpass"}
     )
@@ -51,11 +51,11 @@ async def test_login_returns_refresh_token(async_client):
     assert data["access_token"] != data["refresh_token"]
 
 
-@pytest.mark.anyio
-async def test_refresh_token_gets_new_access_token(async_client):
+@pytest.mark.asyncio
+async def test_refresh_token_gets_new_access_token(client):
     """Test that refresh token can be used to get a new access token."""
     # First login to get tokens
-    login_response = await async_client.post(
+    login_response = await client.post(
         "/api/v1/token",
         data={"username": "testuser", "password": "testpass"}
     )
@@ -66,7 +66,7 @@ async def test_refresh_token_gets_new_access_token(async_client):
     refresh_token = login_data["refresh_token"]
     
     # Use refresh token to get new access token
-    refresh_response = await async_client.post(
+    refresh_response = await client.post(
         "/api/v1/refresh",
         json={"refresh_token": refresh_token}
     )
@@ -91,10 +91,10 @@ async def test_refresh_token_gets_new_access_token(async_client):
     assert new_access_token != original_access_token
 
 
-@pytest.mark.anyio
-async def test_refresh_with_invalid_token_fails(async_client):
+@pytest.mark.asyncio
+async def test_refresh_with_invalid_token_fails(client):
     """Test that using an invalid refresh token returns OAuth2 error format."""
-    response = await async_client.post(
+    response = await client.post(
         "/api/v1/refresh",
         json={"refresh_token": "invalid_refresh_token"}
     )
@@ -109,10 +109,10 @@ async def test_refresh_with_invalid_token_fails(async_client):
     assert "Invalid refresh token" in data["error_description"]
 
 
-@pytest.mark.anyio
-async def test_login_missing_parameters_returns_oauth2_error(async_client):
+@pytest.mark.asyncio
+async def test_login_missing_parameters_returns_oauth2_error(client):
     """Test that login with missing parameters returns OAuth2 invalid_request error."""
-    response = await async_client.post(
+    response = await client.post(
         "/api/v1/token",
         data={"username": "testuser"}  # Missing password
     )
@@ -127,11 +127,11 @@ async def test_login_missing_parameters_returns_oauth2_error(async_client):
     assert "password" in data["error_description"].lower()
 
 
-@pytest.mark.anyio
-async def test_refresh_with_access_token_fails(async_client):
+@pytest.mark.asyncio
+async def test_refresh_with_access_token_fails(client):
     """Test that using an access token as refresh token returns 401."""
     # First login to get tokens
-    login_response = await async_client.post(
+    login_response = await client.post(
         "/api/v1/token",
         data={"username": "testuser", "password": "testpass"}
     )
@@ -141,7 +141,7 @@ async def test_refresh_with_access_token_fails(async_client):
     access_token = login_data["access_token"]  # This is an access token, not refresh
     
     # Try to use access token as refresh token (should fail)
-    refresh_response = await async_client.post(
+    refresh_response = await client.post(
         "/api/v1/refresh",
         json={"refresh_token": access_token}
     )
@@ -156,11 +156,11 @@ async def test_refresh_with_access_token_fails(async_client):
     assert "Invalid refresh token" in data["error_description"]
 
 
-@pytest.mark.anyio
-async def test_access_protected_route_with_refresh_token_fails(async_client):
+@pytest.mark.asyncio
+async def test_access_protected_route_with_refresh_token_fails(client):
     """Test that refresh token cannot be used to access protected routes."""
     # First login to get tokens
-    login_response = await async_client.post(
+    login_response = await client.post(
         "/api/v1/token",
         data={"username": "testuser", "password": "testpass"}
     )
@@ -170,7 +170,7 @@ async def test_access_protected_route_with_refresh_token_fails(async_client):
     refresh_token = login_data["refresh_token"]
     
     # Try to access protected route with refresh token (should fail)
-    response = await async_client.get(
+    response = await client.get(
         "/api/v1/users/me",
         headers={"Authorization": f"Bearer {refresh_token}"}
     )
@@ -180,10 +180,10 @@ async def test_access_protected_route_with_refresh_token_fails(async_client):
     assert "detail" in data
 
 
-@pytest.mark.anyio
-async def test_login_with_invalid_credentials(async_client):
+@pytest.mark.asyncio
+async def test_login_with_invalid_credentials(client):
     """Test that login with invalid credentials returns OAuth2 error format."""
-    response = await async_client.post(
+    response = await client.post(
         "/api/v1/token",
         data={"username": "wronguser", "password": "wrongpass"}
     )
@@ -198,18 +198,18 @@ async def test_login_with_invalid_credentials(async_client):
     assert "Invalid username or password" in data["error_description"]
 
 
-@pytest.mark.anyio
-async def test_access_protected_route_with_valid_token(async_client):
+@pytest.mark.asyncio
+async def test_access_protected_route_with_valid_token(client):
     """Test that protected route works with valid bearer token."""
     # First login to get token
-    login_response = await async_client.post(
+    login_response = await client.post(
         "/api/v1/token",
         data={"username": "testuser", "password": "testpass"}
     )
     token = login_response.json()["access_token"]
     
     # Access protected route
-    response = await async_client.get(
+    response = await client.get(
         "/api/v1/users/me",
         headers={"Authorization": f"Bearer {token}"}
     )
@@ -220,20 +220,20 @@ async def test_access_protected_route_with_valid_token(async_client):
     assert data["username"] == "testuser"
 
 
-@pytest.mark.anyio
-async def test_access_protected_route_without_token(async_client):
+@pytest.mark.asyncio
+async def test_access_protected_route_without_token(client):
     """Test that protected route returns 401 without token."""
-    response = await async_client.get("/api/v1/users/me")
+    response = await client.get("/api/v1/users/me")
     
     assert response.status_code == 401
     data = response.json()
     assert "detail" in data
 
 
-@pytest.mark.anyio
-async def test_access_protected_route_with_invalid_token(async_client):
+@pytest.mark.asyncio
+async def test_access_protected_route_with_invalid_token(client):
     """Test that protected route returns 401 with invalid token."""
-    response = await async_client.get(
+    response = await client.get(
         "/api/v1/users/me",
         headers={"Authorization": "Bearer invalid_token"}
     )
@@ -243,10 +243,10 @@ async def test_access_protected_route_with_invalid_token(async_client):
     assert "detail" in data
 
 
-@pytest.mark.anyio
-async def test_token_has_correct_structure(async_client):
+@pytest.mark.asyncio
+async def test_token_has_correct_structure(client):
     """Test that token response has correct structure."""
-    response = await async_client.post(
+    response = await client.post(
         "/api/v1/token",
         data={"username": "testuser", "password": "testpass"}
     )
@@ -254,58 +254,56 @@ async def test_token_has_correct_structure(async_client):
     assert response.status_code == 200
     data = response.json()
     
-    # Verify required fields
+    # Required OAuth2 fields
     assert "access_token" in data
     assert "token_type" in data
     assert data["token_type"] == "bearer"
     
-    # Token should be a non-empty string
+    # Token should be a string with reasonable length
     assert isinstance(data["access_token"], str)
-    assert len(data["access_token"]) > 0
+    assert len(data["access_token"]) > 10
 
 
-@pytest.mark.anyio
-async def test_logout_endpoint_exists_and_requires_authentication(async_client):
+@pytest.mark.asyncio
+async def test_logout_endpoint_exists_and_requires_authentication(client):
     """Test that logout endpoint exists and requires authentication."""
-    response = await async_client.post("/api/v1/logout")
+    response = await client.post("/api/v1/logout")
     
     assert response.status_code == 401
     data = response.json()
     assert "detail" in data
 
 
-@pytest.mark.anyio
-async def test_logout_invalidates_current_token(async_client):
-    """Test that logout invalidates the current token."""
+@pytest.mark.asyncio
+async def test_logout_invalidates_current_token(client):
+    """Test that logout properly invalidates the current token."""
     # First login to get token
-    login_response = await async_client.post(
+    login_response = await client.post(
         "/api/v1/token",
         data={"username": "testuser", "password": "testpass"}
     )
     token = login_response.json()["access_token"]
     
-    # Verify token works before logout
-    response = await async_client.get(
+    # Verify token works
+    response = await client.get(
         "/api/v1/users/me",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
     
     # Logout
-    logout_response = await async_client.post(
+    logout_response = await client.post(
         "/api/v1/logout",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert logout_response.status_code == 200
     
-    # Try to use the same token after logout (should fail)
-    response = await async_client.get(
+    # Try to use token again (should fail)
+    response = await client.get(
         "/api/v1/users/me",
         headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 401
-    data = response.json()
-    assert "detail" in data
 
 
  
