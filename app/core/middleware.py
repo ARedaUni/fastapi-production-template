@@ -13,7 +13,7 @@ def get_client_ip(request: Request) -> str:
 # Create rate limiter instance with a global default limit
 limiter = Limiter(
     key_func=get_client_ip,
-    default_limits=["100/minute"]  # Global rate limit: 100 requests per minute (for testing)
+    default_limits=["100/minute"]  
 )
 
 async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
