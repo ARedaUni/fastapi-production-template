@@ -6,6 +6,8 @@ import pytest_asyncio
 from asgi_lifespan import LifespanManager
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, create_async_engine
+from slowapi import Limiter
+from fastapi import Request
 
 from app.api.deps import get_session
 from app.core.config import settings
@@ -16,6 +18,16 @@ from app.models.user import User
 
 # Use test database engine instead of production engine
 test_engine = create_async_engine(settings.TEST_DATABASE_URL, echo=False)
+
+# Create a test limiter with no limits
+def get_test_client_ip(request: Request) -> str:
+    """Test rate limiter that doesn't actually limit."""
+    return "test-client"
+
+test_limiter = Limiter(
+    key_func=get_test_client_ip,
+    default_limits=["999999/minute"]  # Effectively unlimited
+)
 
 
 @pytest_asyncio.fixture()
@@ -47,7 +59,17 @@ async def session(connection: AsyncConnection):
 
 @pytest_asyncio.fixture(autouse=True)
 async def override_dependency(session: AsyncSession):
+    # Override database dependency
     app.dependency_overrides[get_session] = lambda: session
+    
+    # Override rate limiter for tests
+    original_limiter = app.state.limiter
+    app.state.limiter = test_limiter
+    
+    yield
+    
+    # Restore original limiter after test
+    app.state.limiter = original_limiter
 
 
 @pytest.fixture(scope="session", autouse=True)
