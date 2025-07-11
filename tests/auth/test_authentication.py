@@ -2,6 +2,8 @@
 
 import pytest
 
+from app.core.config import settings
+
 
 @pytest.mark.asyncio
 async def test_login_with_valid_credentials(client):
@@ -9,7 +11,7 @@ async def test_login_with_valid_credentials(client):
     # Using form data as per OAuth2 password flow
     response = await client.post(
         "/api/v1/token",
-        data={"username": "testuser", "password": "testpass"}
+        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
     )
     
     assert response.status_code == 200
@@ -24,7 +26,7 @@ async def test_login_returns_refresh_token(client):
     """Test that login with valid credentials returns both access and refresh tokens."""
     response = await client.post(
         "/api/v1/token",
-        data={"username": "testuser", "password": "testpass"}
+        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
     )
     
     assert response.status_code == 200
@@ -57,7 +59,7 @@ async def test_refresh_token_gets_new_access_token(client):
     # First login to get tokens
     login_response = await client.post(
         "/api/v1/token",
-        data={"username": "testuser", "password": "testpass"}
+        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
     )
     
     assert login_response.status_code == 200
@@ -114,7 +116,7 @@ async def test_login_missing_parameters_returns_oauth2_error(client):
     """Test that login with missing parameters returns OAuth2 invalid_request error."""
     response = await client.post(
         "/api/v1/token",
-        data={"username": "testuser"}  # Missing password
+        data={"username": settings.FIRST_USERNAME}  # Missing password
     )
     
     assert response.status_code == 400
@@ -133,7 +135,7 @@ async def test_refresh_with_access_token_fails(client):
     # First login to get tokens
     login_response = await client.post(
         "/api/v1/token",
-        data={"username": "testuser", "password": "testpass"}
+        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
     )
     
     assert login_response.status_code == 200
@@ -162,7 +164,7 @@ async def test_access_protected_route_with_refresh_token_fails(client):
     # First login to get tokens
     login_response = await client.post(
         "/api/v1/token",
-        data={"username": "testuser", "password": "testpass"}
+        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
     )
     
     assert login_response.status_code == 200
@@ -204,7 +206,7 @@ async def test_access_protected_route_with_valid_token(client):
     # First login to get token
     login_response = await client.post(
         "/api/v1/token",
-        data={"username": "testuser", "password": "testpass"}
+        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
     )
     token = login_response.json()["access_token"]
     
@@ -217,7 +219,7 @@ async def test_access_protected_route_with_valid_token(client):
     assert response.status_code == 200
     data = response.json()
     assert "username" in data
-    assert data["username"] == "testuser"
+    assert data["username"] == settings.FIRST_USERNAME
 
 
 @pytest.mark.asyncio
@@ -248,7 +250,7 @@ async def test_token_has_correct_structure(client):
     """Test that token response has correct structure."""
     response = await client.post(
         "/api/v1/token",
-        data={"username": "testuser", "password": "testpass"}
+        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
     )
     
     assert response.status_code == 200
@@ -280,7 +282,7 @@ async def test_logout_invalidates_current_token(client):
     # First login to get token
     login_response = await client.post(
         "/api/v1/token",
-        data={"username": "testuser", "password": "testpass"}
+        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
     )
     token = login_response.json()["access_token"]
     

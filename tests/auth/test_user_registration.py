@@ -2,6 +2,8 @@
 
 import pytest
 
+from app.core.config import settings
+
 
 @pytest.mark.asyncio
 async def test_register_new_user_success(client):
@@ -38,7 +40,7 @@ async def test_register_new_user_success(client):
 async def test_register_duplicate_username_fails(client):
     """Test that registering with an existing username returns 400 error."""
     registration_data = {
-        "username": "testuser",  # This username already exists in test data
+        "username": settings.FIRST_USERNAME,  # This username already exists in test data
         "email": "different@example.com",
         "full_name": "Different User",
         "password": "securepassword123"

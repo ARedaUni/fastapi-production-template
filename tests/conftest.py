@@ -31,12 +31,12 @@ async def connection():
 @pytest_asyncio.fixture()
 async def session(connection: AsyncConnection):
     async with AsyncSession(connection, expire_on_commit=False) as _session:
-        # Create test user for authentication tests
+        # Create test user for authentication tests using settings
         test_user = User(
-            username="testuser",
+            username=settings.FIRST_USERNAME,
             email="test@example.com",
             full_name="Test User",
-            hashed_password=get_password_hash("testpass"),
+            hashed_password=get_password_hash(settings.FIRST_PASSWORD.get_secret_value()),
             is_active=True,
             is_superuser=False
         )
@@ -67,8 +67,8 @@ async def client():
 @pytest_asyncio.fixture()
 async def superuser_token_headers(client: AsyncClient) -> Dict[str, str]:
     login_data = {
-        "username": "testuser",
-        "password": "testpass",
+        "username": settings.FIRST_USERNAME,
+        "password": settings.FIRST_PASSWORD.get_secret_value(),
     }
     res = await client.post("/api/v1/token", data=login_data)
     access_token = res.json()["access_token"]
