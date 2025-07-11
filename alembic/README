@@ -1,0 +1,95 @@
+# Async Alembic Configuration
+
+This project uses an **async-compatible Alembic setup** that works seamlessly with FastAPI and `asyncpg`. This configuration allows Alembic to generate and run migrations using the same async database connection as your FastAPI application.
+
+## Key Components
+
+### 1. AsyncEngine Integration
+
+Instead of converting async URLs to sync (which requires additional dependencies), we use SQLAlchemy's `AsyncEngine` wrapper:
+
+```python
+connectable = AsyncEngine(
+    engine_from_config(
+        configuration, prefix="sqlalchemy.", poolclass=pool.NullPool, future=True
+    )
+)
+```
+
+### 2. Async Migration Execution
+
+Migrations run inside an async context using `connection.run_sync()`:
+
+```python
+async def run_migrations_online():
+    # ... setup ...
+    async with connectable.connect() as connection:
+        await connection.run_sync(do_run_migrations)
+    await connectable.dispose()
+```
+
+### 3. Asyncio Integration
+
+The main entry point uses `asyncio.run()` to handle the async execution:
+
+```python
+if context.is_offline_mode():
+    run_migrations_offline()
+else:
+    asyncio.run(run_migrations_online())
+```
+
+## Benefits
+
+- **No URL conversion**: Works directly with `postgresql+asyncpg://` URLs
+- **No additional dependencies**: No need for `psycopg2` or `psycopg2-binary`
+- **Consistent configuration**: Uses the same database settings as your FastAPI app
+- **Future-proof**: Leverages SQLAlchemy's native async support
+
+## Database URL Resolution
+
+The `get_url()` function pulls the database URL directly from your app's settings:
+
+```python
+def get_url() -> str:
+    """Get database URL from settings."""
+    return settings.DATABASE_URL
+```
+
+This ensures migrations always use the same database configuration as your running application.
+
+## Model Discovery
+
+All models are automatically discovered by importing the models module:
+
+```python
+from app import models  # noqa: F401
+from app.models.base import Base  # noqa: F401
+target_metadata = Base.metadata
+```
+
+## Usage
+
+### Generate a new migration
+```bash
+uv run alembic revision --autogenerate -m "Description of changes"
+```
+
+### Apply migrations
+```bash
+uv run alembic upgrade head
+```
+
+### Check current migration status
+```bash
+uv run alembic current
+```
+
+### View migration history
+```bash
+uv run alembic history
+```
+
+## Credit
+
+This async configuration is based on [Kludex's approach](https://github.com/kludex) for handling async database connections with Alembic in modern FastAPI applications. 

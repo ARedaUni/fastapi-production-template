@@ -10,7 +10,14 @@ from app.core.security import OAuth2Error
 from app.api.exceptions import oauth2_exception_handler, validation_exception_handler
 from app.core.middleware import limiter, rate_limit_exceeded_handler
 
-app = FastAPI()
+# Add OpenAPI customization
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    description="A lightweight FastAPI template for production",
+    version=settings.VERSION,
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
 
 # Add rate limiting
 app.state.limiter = limiter

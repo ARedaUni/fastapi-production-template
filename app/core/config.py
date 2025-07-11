@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
     
     # API settings
-    PROJECT_NAME: str = "FastAPI Template"
+    PROJECT_NAME: str = "Lightweight FastAPI Template"
     VERSION: str = "0.1.0"
     V1_STR: str = "/api/v1"
     
@@ -29,7 +29,6 @@ class Settings(BaseSettings):
     POSTGRES_USER: str
     POSTGRES_PASSWORD: SecretStr
     DATABASE_URL: str | None = None
-    TEST_DATABASE_URL: str = "sqlite+aiosqlite:///:memory:"
     FIRST_USERNAME: str
     FIRST_PASSWORD: SecretStr 
     

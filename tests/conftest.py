@@ -8,6 +8,7 @@ from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, create_async_engine
 from slowapi import Limiter
 from fastapi import Request
+from pytest_postgresql import factories
 
 from app.api.deps import get_session
 from app.core.config import settings
@@ -16,8 +17,12 @@ from app.main import app
 from app.models.base import Base
 from app.models.user import User
 
-# Use test database engine instead of production engine
-test_engine = create_async_engine(settings.TEST_DATABASE_URL, echo=False)
+# Create PostgreSQL test factories
+postgresql_proc = factories.postgresql_proc(
+    port=None,
+    unixsocketdir='/tmp'
+)
+postgresql = factories.postgresql('postgresql_proc')
 
 # Create a test limiter with no limits
 def get_test_client_ip(request: Request) -> str:
@@ -26,18 +31,33 @@ def get_test_client_ip(request: Request) -> str:
 
 test_limiter = Limiter(
     key_func=get_test_client_ip,
-    default_limits=["999999/minute"]  # Effectively unlimited
+    default_limits=["999999/minute"] 
 )
 
 
 @pytest_asyncio.fixture()
-async def connection():
-    async with test_engine.begin() as conn:
+async def connection(postgresql):
+    """Create test database connection using pytest-postgresql."""
+    # Create async engine using the pytest-postgresql instance
+    database_url = (
+        f"postgresql+asyncpg://"
+        f"{postgresql.info.user}@"
+        f"{postgresql.info.host}:"
+        f"{postgresql.info.port}/"
+        f"{postgresql.info.dbname}"
+    )
+    
+    engine = create_async_engine(database_url, echo=False)
+    
+    async with engine.begin() as conn:
         # Create all tables
         await conn.run_sync(Base.metadata.create_all)
         yield conn
         # Clean up tables after test
         await conn.run_sync(Base.metadata.drop_all)
+    
+    # Close the engine
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture()
