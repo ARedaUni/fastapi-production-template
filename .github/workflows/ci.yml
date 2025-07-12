@@ -67,7 +67,7 @@ jobs:
         echo "FIRST_USERNAME=testuser" >> $GITHUB_ENV
         echo "FIRST_PASSWORD=testpassword123" >> $GITHUB_ENV
         echo "SECRET_KEY=test_secret_key_32_characters_long_for_testing" >> $GITHUB_ENV
-        echo "ACCESS_TOKEN_EXPIRE_MINUTES=10" >> $GITHUB_ENV
+        echo "ACCESS_TOKEN_EXPIRE_MINUTES=30" >> $GITHUB_ENV
         echo "REDIS_HOST=localhost" >> $GITHUB_ENV
         echo "REDIS_PORT=6379" >> $GITHUB_ENV
         echo "ENVIRONMENT=testing" >> $GITHUB_ENV
