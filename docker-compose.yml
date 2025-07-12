@@ -118,7 +118,7 @@ services:
         echo 'Running database migrations...' &&
         alembic upgrade head &&
         echo 'Seeding initial data...' &&
-        python scripts/seed_data.py &&
+        python scripts/prestart_seed.py &&
         echo 'Database setup complete!'
       "
     networks:
