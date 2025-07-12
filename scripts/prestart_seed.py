@@ -27,13 +27,13 @@ async def create_initial_user(session: AsyncSession) -> None:
 
     # Check if user already exists
     existing = await user_exists(
-        session,
-        settings.FIRST_USERNAME,
-        f"{settings.FIRST_USERNAME}@example.com"
+        session, settings.FIRST_USERNAME, f"{settings.FIRST_USERNAME}@example.com"
     )
 
     if existing["username_exists"]:
-        logger.info(f"User '{settings.FIRST_USERNAME}' already exists, skipping creation")
+        logger.info(
+            f"User '{settings.FIRST_USERNAME}' already exists, skipping creation"
+        )
         return
 
     logger.info(f"Creating initial user: {settings.FIRST_USERNAME}")
