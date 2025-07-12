@@ -17,7 +17,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/token")
 
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
-    session: Annotated[AsyncSession, Depends(get_session)]
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> User:
     """Get the current user from the JWT token."""
     credentials_exception = HTTPException(
@@ -41,14 +41,15 @@ async def get_current_user(
 
     if user.disabled:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
         )
 
     return convert_user_in_db_to_user(user)
 
 
-async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+async def get_current_active_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
     """Get the current active user (not disabled)."""
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")

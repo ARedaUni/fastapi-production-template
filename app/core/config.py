@@ -28,7 +28,6 @@ class Settings(BaseSettings):
     VERSION: str = "0.1.0"
     V1_STR: str = "/api/v1"
 
-
     # Database components - REQUIRED in production
     POSTGRES_HOST: str
     POSTGRES_DB: str
@@ -43,7 +42,7 @@ class Settings(BaseSettings):
     def validate_database_url(cls, v: Optional[str], info: ValidationInfo) -> str:
         if isinstance(v, str):
             return v
-        values = info.data if hasattr(info, 'data') else {}
+        values = info.data if hasattr(info, "data") else {}
         password: SecretStr = values.get("POSTGRES_PASSWORD", SecretStr(""))
         return "postgresql+asyncpg://{user}:{password}@{host}/{db}".format(
             user=values.get("POSTGRES_USER"),
@@ -60,9 +59,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["development", "testing", "production"] = "development"
 
     # CORS settings
-    BACKEND_CORS_ORIGINS: Annotated[
-        list[str] | str, BeforeValidator(parse_cors)
-    ] = []
+    BACKEND_CORS_ORIGINS: Annotated[list[str] | str, BeforeValidator(parse_cors)] = []
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -79,9 +76,13 @@ class Settings(BaseSettings):
         # Convert BACKEND_CORS_ORIGINS to list if it's a string
         if isinstance(self.BACKEND_CORS_ORIGINS, str):
             if self.BACKEND_CORS_ORIGINS:
-                base_origins = [origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",")]
+                base_origins = [
+                    origin.strip() for origin in self.BACKEND_CORS_ORIGINS.split(",")
+                ]
         else:
-            base_origins = [str(origin).rstrip("/") for origin in self.BACKEND_CORS_ORIGINS]
+            base_origins = [
+                str(origin).rstrip("/") for origin in self.BACKEND_CORS_ORIGINS
+            ]
 
         # Add environment-specific defaults
         if self.ENVIRONMENT == "development":
@@ -91,14 +92,18 @@ class Settings(BaseSettings):
                 "http://localhost:5173",  # Vite default
                 "http://127.0.0.1:3000",
                 "http://127.0.0.1:8080",
-                "http://127.0.0.1:5173"
+                "http://127.0.0.1:5173",
             ]
             # Add defaults if no origins configured
             if not base_origins:
                 base_origins = default_dev_origins
             else:
                 # Merge with configured origins, avoiding duplicates
-                all_origins = base_origins + [origin for origin in default_dev_origins if origin not in base_origins]
+                all_origins = base_origins + [
+                    origin
+                    for origin in default_dev_origins
+                    if origin not in base_origins
+                ]
                 base_origins = all_origins
         elif self.ENVIRONMENT == "testing":
             # For testing, only use explicitly configured origins (usually none)
@@ -106,7 +111,9 @@ class Settings(BaseSettings):
         elif self.ENVIRONMENT == "production":
             # For production, only use explicitly configured origins
             if not base_origins:
-                raise ValueError("BACKEND_CORS_ORIGINS must be configured for production environment")
+                raise ValueError(
+                    "BACKEND_CORS_ORIGINS must be configured for production environment"
+                )
 
         return base_origins
 
@@ -120,7 +127,9 @@ class Settings(BaseSettings):
 
     @field_validator("SECRET_KEY", mode="before")
     @classmethod
-    def validate_secret_key(cls, v: str | SecretStr | None, info: ValidationInfo) -> SecretStr:
+    def validate_secret_key(
+        cls, v: str | SecretStr | None, info: ValidationInfo
+    ) -> SecretStr:
         """Validate SECRET_KEY is provided and secure enough."""
         if v is None:
             raise ValueError("SECRET_KEY is required")
@@ -137,11 +146,13 @@ class Settings(BaseSettings):
             "secret",
             "password",
             "changeme",
-            "development"
+            "development",
         ]
 
         if secret_value.lower() in insecure_defaults:
-            raise ValueError(f"SECRET_KEY cannot be a default/insecure value: {secret_value}")
+            raise ValueError(
+                f"SECRET_KEY cannot be a default/insecure value: {secret_value}"
+            )
 
         # Minimum length check
         if len(secret_value) < 32:
@@ -157,7 +168,3 @@ def get_settings() -> Settings:
 
 # Create settings instance once at module level
 settings = get_settings()
-
-
-
-

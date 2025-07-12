@@ -32,8 +32,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/token")
 
 @router.post("/register", response_model=User, status_code=status.HTTP_201_CREATED)
 async def register_user(
-    user_data: UserCreate,
-    session: Annotated[AsyncSession, Depends(get_session)]
+    user_data: UserCreate, session: Annotated[AsyncSession, Depends(get_session)]
 ) -> User:
     """Register a new user."""
     # Check if username or email already exists
@@ -42,13 +41,12 @@ async def register_user(
     if existing["username_exists"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already registered"
+            detail="Username already registered",
         )
 
     if existing["email_exists"]:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
     # Create new user
@@ -57,7 +55,7 @@ async def register_user(
         username=user_data.username,
         email=user_data.email,
         full_name=user_data.full_name,
-        password=user_data.password
+        password=user_data.password,
     )
 
     return user
@@ -66,7 +64,7 @@ async def register_user(
 @router.post("/token", response_model=Token)
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    session: Annotated[AsyncSession, Depends(get_session)]
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> Token:
     """Login endpoint that returns access and refresh tokens."""
     user = await authenticate_user(session, form_data.username, form_data.password)
@@ -74,7 +72,7 @@ async def login_for_access_token(
         raise OAuth2Error(
             error="invalid_grant",
             error_description="Invalid username or password",
-            status_code=status.HTTP_401_UNAUTHORIZED
+            status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
     token_service = get_token_service()
@@ -82,28 +80,26 @@ async def login_for_access_token(
     # Create both tokens
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = token_service.create_access_token(
-        user=user,
-        expires_delta=access_token_expires
+        user=user, expires_delta=access_token_expires
     )
 
     refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     refresh_token = token_service.create_refresh_token(
-        user=user,
-        expires_delta=refresh_token_expires
+        user=user, expires_delta=refresh_token_expires
     )
 
     return Token(
         access_token=access_token,
         refresh_token=refresh_token,
         token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
 
 @router.post("/refresh", response_model=AccessTokenResponse)
 async def refresh_access_token(
     refresh_request: RefreshTokenRequest,
-    session: Annotated[AsyncSession, Depends(get_session)]
+    session: Annotated[AsyncSession, Depends(get_session)],
 ) -> AccessTokenResponse:
     """Use refresh token to get a new access token."""
 
@@ -115,7 +111,7 @@ async def refresh_access_token(
         raise OAuth2Error(
             error="invalid_grant",
             error_description="Invalid refresh token",
-            status_code=status.HTTP_401_UNAUTHORIZED
+            status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
     username = payload.get("sub")
@@ -123,7 +119,7 @@ async def refresh_access_token(
         raise OAuth2Error(
             error="invalid_grant",
             error_description="Invalid refresh token",
-            status_code=status.HTTP_401_UNAUTHORIZED
+            status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
     # Get user from database
@@ -132,33 +128,31 @@ async def refresh_access_token(
         raise OAuth2Error(
             error="invalid_grant",
             error_description="Invalid refresh token",
-            status_code=status.HTTP_401_UNAUTHORIZED
+            status_code=status.HTTP_401_UNAUTHORIZED,
         )
 
     if user.disabled:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
         )
 
     # Create new access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = token_service.create_access_token(
-        user=convert_user_in_db_to_user(user),
-        expires_delta=access_token_expires
+        user=convert_user_in_db_to_user(user), expires_delta=access_token_expires
     )
 
     return AccessTokenResponse(
         access_token=access_token,
         token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
 
 
 @router.post("/logout", status_code=status.HTTP_200_OK)
 async def logout(
     token: Annotated[str, Depends(oauth2_scheme)],
-    current_user: Annotated[User, Depends(get_current_user)]
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> dict[str, str]:
     """Logout the current user by invalidating their token."""
     # Extract JTI from token and blacklist it
@@ -174,7 +168,7 @@ async def logout(
 
 @router.get("/users/me", response_model=User)
 async def read_users_me(
-    current_user: Annotated[User, Depends(get_current_user)]
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> User:
     """Get current user profile."""
     return current_user

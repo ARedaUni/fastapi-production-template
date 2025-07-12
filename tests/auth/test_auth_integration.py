@@ -27,13 +27,10 @@ async def test_complete_auth_workflow_integration(client: AsyncClient):
         "username": "integrationuser",
         "email": "integration@example.com",
         "full_name": "Integration Test User",
-        "password": "securepassword123"
+        "password": "securepassword123",
     }
 
-    register_response = await client.post(
-        "/api/v1/register",
-        json=registration_data
-    )
+    register_response = await client.post("/api/v1/register", json=registration_data)
 
     assert register_response.status_code == 201
     user_data = register_response.json()
@@ -46,10 +43,7 @@ async def test_complete_auth_workflow_integration(client: AsyncClient):
     # Step 2: Login with the new user to get tokens
     login_response = await client.post(
         "/api/v1/token",
-        data={
-            "username": "integrationuser",
-            "password": "securepassword123"
-        }
+        data={"username": "integrationuser", "password": "securepassword123"},
     )
 
     assert login_response.status_code == 200
@@ -64,8 +58,7 @@ async def test_complete_auth_workflow_integration(client: AsyncClient):
 
     # Step 3: Access protected endpoint with access token
     protected_response = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {initial_access_token}"}
+        "/api/v1/users/me", headers={"Authorization": f"Bearer {initial_access_token}"}
     )
 
     assert protected_response.status_code == 200
@@ -76,8 +69,7 @@ async def test_complete_auth_workflow_integration(client: AsyncClient):
 
     # Step 4: Refresh access token using refresh token
     refresh_response = await client.post(
-        "/api/v1/refresh",
-        json={"refresh_token": refresh_token}
+        "/api/v1/refresh", json={"refresh_token": refresh_token}
     )
 
     assert refresh_response.status_code == 200
@@ -91,8 +83,7 @@ async def test_complete_auth_workflow_integration(client: AsyncClient):
 
     # Step 5: Access protected endpoint with new access token
     protected_response_new = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {new_access_token}"}
+        "/api/v1/users/me", headers={"Authorization": f"Bearer {new_access_token}"}
     )
 
     assert protected_response_new.status_code == 200
@@ -101,8 +92,7 @@ async def test_complete_auth_workflow_integration(client: AsyncClient):
 
     # Step 6: Logout (blacklist the new access token)
     logout_response = await client.post(
-        "/api/v1/logout",
-        headers={"Authorization": f"Bearer {new_access_token}"}
+        "/api/v1/logout", headers={"Authorization": f"Bearer {new_access_token}"}
     )
 
     assert logout_response.status_code == 200
@@ -111,8 +101,7 @@ async def test_complete_auth_workflow_integration(client: AsyncClient):
 
     # Step 7: Verify access is denied after logout
     protected_response_after_logout = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {new_access_token}"}
+        "/api/v1/users/me", headers={"Authorization": f"Bearer {new_access_token}"}
     )
 
     assert protected_response_after_logout.status_code == 401
@@ -123,11 +112,7 @@ async def test_invalid_credentials_login_fails(client: AsyncClient):
     """Test that login fails with invalid credentials."""
     # Try to login with non-existent user
     login_response = await client.post(
-        "/api/v1/token",
-        data={
-            "username": "nonexistent",
-            "password": "wrongpassword"
-        }
+        "/api/v1/token", data={"username": "nonexistent", "password": "wrongpassword"}
     )
 
     assert login_response.status_code == 401
@@ -140,8 +125,7 @@ async def test_invalid_credentials_login_fails(client: AsyncClient):
 async def test_invalid_refresh_token_fails(client: AsyncClient):
     """Test that refresh fails with invalid refresh token."""
     refresh_response = await client.post(
-        "/api/v1/refresh",
-        json={"refresh_token": "invalid.token.here"}
+        "/api/v1/refresh", json={"refresh_token": "invalid.token.here"}
     )
 
     assert refresh_response.status_code == 401
@@ -164,8 +148,7 @@ async def test_access_protected_endpoint_without_token_fails(client: AsyncClient
 async def test_access_protected_endpoint_with_invalid_token_fails(client: AsyncClient):
     """Test that accessing protected endpoint with invalid token fails."""
     protected_response = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": "Bearer invalid.token.here"}
+        "/api/v1/users/me", headers={"Authorization": "Bearer invalid.token.here"}
     )
 
     assert protected_response.status_code == 401
@@ -189,21 +172,15 @@ async def test_refresh_token_workflow_integration(client: AsyncClient):
         "username": "refreshuser",
         "email": "refresh@example.com",
         "full_name": "Refresh Test User",
-        "password": "refreshpassword123"
+        "password": "refreshpassword123",
     }
 
-    register_response = await client.post(
-        "/api/v1/register",
-        json=registration_data
-    )
+    register_response = await client.post("/api/v1/register", json=registration_data)
     assert register_response.status_code == 201
 
     login_response = await client.post(
         "/api/v1/token",
-        data={
-            "username": "refreshuser",
-            "password": "refreshpassword123"
-        }
+        data={"username": "refreshuser", "password": "refreshpassword123"},
     )
     assert login_response.status_code == 200
 
@@ -213,8 +190,7 @@ async def test_refresh_token_workflow_integration(client: AsyncClient):
 
     # Step 2: Use refresh token to get new access token
     refresh_response = await client.post(
-        "/api/v1/refresh",
-        json={"refresh_token": refresh_token}
+        "/api/v1/refresh", json={"refresh_token": refresh_token}
     )
 
     assert refresh_response.status_code == 200
@@ -223,8 +199,7 @@ async def test_refresh_token_workflow_integration(client: AsyncClient):
 
     # Step 3: Verify new access token works
     me_response_new = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {new_access_token}"}
+        "/api/v1/users/me", headers={"Authorization": f"Bearer {new_access_token}"}
     )
 
     assert me_response_new.status_code == 200
@@ -233,8 +208,7 @@ async def test_refresh_token_workflow_integration(client: AsyncClient):
 
     # Step 4: Verify original access token still works (refresh doesn't invalidate it)
     me_response_original = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {original_access_token}"}
+        "/api/v1/users/me", headers={"Authorization": f"Bearer {original_access_token}"}
     )
 
     assert me_response_original.status_code == 200
@@ -258,21 +232,15 @@ async def test_token_blacklist_workflow_integration(client: AsyncClient):
         "username": "blacklistuser",
         "email": "blacklist@example.com",
         "full_name": "Blacklist Test User",
-        "password": "blacklistpassword123"
+        "password": "blacklistpassword123",
     }
 
-    register_response = await client.post(
-        "/api/v1/register",
-        json=registration_data
-    )
+    register_response = await client.post("/api/v1/register", json=registration_data)
     assert register_response.status_code == 201
 
     login_response = await client.post(
         "/api/v1/token",
-        data={
-            "username": "blacklistuser",
-            "password": "blacklistpassword123"
-        }
+        data={"username": "blacklistuser", "password": "blacklistpassword123"},
     )
     assert login_response.status_code == 200
 
@@ -282,29 +250,25 @@ async def test_token_blacklist_workflow_integration(client: AsyncClient):
 
     # Step 2: Access protected endpoint successfully
     me_response = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {access_token}"}
+        "/api/v1/users/me", headers={"Authorization": f"Bearer {access_token}"}
     )
     assert me_response.status_code == 200
 
     # Step 3: Logout (blacklist token)
     logout_response = await client.post(
-        "/api/v1/logout",
-        headers={"Authorization": f"Bearer {access_token}"}
+        "/api/v1/logout", headers={"Authorization": f"Bearer {access_token}"}
     )
     assert logout_response.status_code == 200
 
     # Step 4: Verify blacklisted token is rejected
     me_response_after_logout = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {access_token}"}
+        "/api/v1/users/me", headers={"Authorization": f"Bearer {access_token}"}
     )
     assert me_response_after_logout.status_code == 401
 
     # Step 5: Verify refresh token can still create new access token
     refresh_response = await client.post(
-        "/api/v1/refresh",
-        json={"refresh_token": refresh_token}
+        "/api/v1/refresh", json={"refresh_token": refresh_token}
     )
     assert refresh_response.status_code == 200
 
@@ -312,21 +276,18 @@ async def test_token_blacklist_workflow_integration(client: AsyncClient):
 
     # Verify new token works
     me_response_new = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {new_access_token}"}
+        "/api/v1/users/me", headers={"Authorization": f"Bearer {new_access_token}"}
     )
     assert me_response_new.status_code == 200
 
     # Step 6: Logout with new token and verify it's also blacklisted
     logout_response_2 = await client.post(
-        "/api/v1/logout",
-        headers={"Authorization": f"Bearer {new_access_token}"}
+        "/api/v1/logout", headers={"Authorization": f"Bearer {new_access_token}"}
     )
     assert logout_response_2.status_code == 200
 
     me_response_final = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {new_access_token}"}
+        "/api/v1/users/me", headers={"Authorization": f"Bearer {new_access_token}"}
     )
     assert me_response_final.status_code == 401
 
@@ -343,8 +304,8 @@ async def test_disabled_user_cannot_access_system(client: AsyncClient):
         "/api/v1/token",
         data={
             "username": settings.FIRST_USERNAME,
-            "password": settings.FIRST_PASSWORD.get_secret_value()
-        }
+            "password": settings.FIRST_PASSWORD.get_secret_value(),
+        },
     )
 
     assert login_response.status_code == 200
@@ -353,8 +314,7 @@ async def test_disabled_user_cannot_access_system(client: AsyncClient):
 
     # Access should work for active user
     me_response = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {access_token}"}
+        "/api/v1/users/me", headers={"Authorization": f"Bearer {access_token}"}
     )
 
     assert me_response.status_code == 200
@@ -371,7 +331,7 @@ async def test_multiple_user_registrations_sequential(client: AsyncClient):
             "username": f"sequser{i}",
             "email": f"sequser{i}@example.com",
             "full_name": f"Sequential User {i}",
-            "password": "sequentialpassword123"
+            "password": "sequentialpassword123",
         }
         for i in range(3)
     ]
@@ -381,19 +341,13 @@ async def test_multiple_user_registrations_sequential(client: AsyncClient):
     # Register and login each user sequentially
     for user_data in users_data:
         # Register user
-        register_response = await client.post(
-            "/api/v1/register",
-            json=user_data
-        )
+        register_response = await client.post("/api/v1/register", json=user_data)
         assert register_response.status_code == 201
 
         # Login user
         login_response = await client.post(
             "/api/v1/token",
-            data={
-                "username": user_data["username"],
-                "password": user_data["password"]
-            }
+            data={"username": user_data["username"], "password": user_data["password"]},
         )
         assert login_response.status_code == 200
         access_tokens.append(login_response.json()["access_token"])
@@ -401,8 +355,7 @@ async def test_multiple_user_registrations_sequential(client: AsyncClient):
     # Verify all tokens work
     for i, token in enumerate(access_tokens):
         me_response = await client.get(
-            "/api/v1/users/me",
-            headers={"Authorization": f"Bearer {token}"}
+            "/api/v1/users/me", headers={"Authorization": f"Bearer {token}"}
         )
 
         assert me_response.status_code == 200

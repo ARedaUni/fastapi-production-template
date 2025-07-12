@@ -11,7 +11,10 @@ async def test_login_with_valid_credentials(client):
     # Using form data as per OAuth2 password flow
     response = await client.post(
         "/api/v1/token",
-        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
+        data={
+            "username": settings.FIRST_USERNAME,
+            "password": settings.FIRST_PASSWORD.get_secret_value(),
+        },
     )
 
     assert response.status_code == 200
@@ -26,7 +29,10 @@ async def test_login_returns_refresh_token(client):
     """Test that login with valid credentials returns both access and refresh tokens."""
     response = await client.post(
         "/api/v1/token",
-        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
+        data={
+            "username": settings.FIRST_USERNAME,
+            "password": settings.FIRST_PASSWORD.get_secret_value(),
+        },
     )
 
     assert response.status_code == 200
@@ -59,7 +65,10 @@ async def test_refresh_token_gets_new_access_token(client):
     # First login to get tokens
     login_response = await client.post(
         "/api/v1/token",
-        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
+        data={
+            "username": settings.FIRST_USERNAME,
+            "password": settings.FIRST_PASSWORD.get_secret_value(),
+        },
     )
 
     assert login_response.status_code == 200
@@ -69,8 +78,7 @@ async def test_refresh_token_gets_new_access_token(client):
 
     # Use refresh token to get new access token
     refresh_response = await client.post(
-        "/api/v1/refresh",
-        json={"refresh_token": refresh_token}
+        "/api/v1/refresh", json={"refresh_token": refresh_token}
     )
 
     assert refresh_response.status_code == 200
@@ -97,8 +105,7 @@ async def test_refresh_token_gets_new_access_token(client):
 async def test_refresh_with_invalid_token_fails(client):
     """Test that using an invalid refresh token returns OAuth2 error format."""
     response = await client.post(
-        "/api/v1/refresh",
-        json={"refresh_token": "invalid_refresh_token"}
+        "/api/v1/refresh", json={"refresh_token": "invalid_refresh_token"}
     )
 
     assert response.status_code == 401
@@ -116,7 +123,7 @@ async def test_login_missing_parameters_returns_oauth2_error(client):
     """Test that login with missing parameters returns OAuth2 invalid_request error."""
     response = await client.post(
         "/api/v1/token",
-        data={"username": settings.FIRST_USERNAME}  # Missing password
+        data={"username": settings.FIRST_USERNAME},  # Missing password
     )
 
     assert response.status_code == 400
@@ -135,7 +142,10 @@ async def test_refresh_with_access_token_fails(client):
     # First login to get tokens
     login_response = await client.post(
         "/api/v1/token",
-        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
+        data={
+            "username": settings.FIRST_USERNAME,
+            "password": settings.FIRST_PASSWORD.get_secret_value(),
+        },
     )
 
     assert login_response.status_code == 200
@@ -144,8 +154,7 @@ async def test_refresh_with_access_token_fails(client):
 
     # Try to use access token as refresh token (should fail)
     refresh_response = await client.post(
-        "/api/v1/refresh",
-        json={"refresh_token": access_token}
+        "/api/v1/refresh", json={"refresh_token": access_token}
     )
 
     assert refresh_response.status_code == 401
@@ -164,7 +173,10 @@ async def test_access_protected_route_with_refresh_token_fails(client):
     # First login to get tokens
     login_response = await client.post(
         "/api/v1/token",
-        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
+        data={
+            "username": settings.FIRST_USERNAME,
+            "password": settings.FIRST_PASSWORD.get_secret_value(),
+        },
     )
 
     assert login_response.status_code == 200
@@ -173,8 +185,7 @@ async def test_access_protected_route_with_refresh_token_fails(client):
 
     # Try to access protected route with refresh token (should fail)
     response = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {refresh_token}"}
+        "/api/v1/users/me", headers={"Authorization": f"Bearer {refresh_token}"}
     )
 
     assert response.status_code == 401
@@ -186,8 +197,7 @@ async def test_access_protected_route_with_refresh_token_fails(client):
 async def test_login_with_invalid_credentials(client):
     """Test that login with invalid credentials returns OAuth2 error format."""
     response = await client.post(
-        "/api/v1/token",
-        data={"username": "wronguser", "password": "wrongpass"}
+        "/api/v1/token", data={"username": "wronguser", "password": "wrongpass"}
     )
 
     assert response.status_code == 401
@@ -206,14 +216,16 @@ async def test_access_protected_route_with_valid_token(client):
     # First login to get token
     login_response = await client.post(
         "/api/v1/token",
-        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
+        data={
+            "username": settings.FIRST_USERNAME,
+            "password": settings.FIRST_PASSWORD.get_secret_value(),
+        },
     )
     token = login_response.json()["access_token"]
 
     # Access protected route
     response = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {token}"}
+        "/api/v1/users/me", headers={"Authorization": f"Bearer {token}"}
     )
 
     assert response.status_code == 200
@@ -236,8 +248,7 @@ async def test_access_protected_route_without_token(client):
 async def test_access_protected_route_with_invalid_token(client):
     """Test that protected route returns 401 with invalid token."""
     response = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": "Bearer invalid_token"}
+        "/api/v1/users/me", headers={"Authorization": "Bearer invalid_token"}
     )
 
     assert response.status_code == 401
@@ -250,7 +261,10 @@ async def test_token_has_correct_structure(client):
     """Test that token response has correct structure."""
     response = await client.post(
         "/api/v1/token",
-        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
+        data={
+            "username": settings.FIRST_USERNAME,
+            "password": settings.FIRST_PASSWORD.get_secret_value(),
+        },
     )
 
     assert response.status_code == 200
@@ -282,29 +296,27 @@ async def test_logout_invalidates_current_token(client):
     # First login to get token
     login_response = await client.post(
         "/api/v1/token",
-        data={"username": settings.FIRST_USERNAME, "password": settings.FIRST_PASSWORD.get_secret_value()}
+        data={
+            "username": settings.FIRST_USERNAME,
+            "password": settings.FIRST_PASSWORD.get_secret_value(),
+        },
     )
     token = login_response.json()["access_token"]
 
     # Verify token works
     response = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {token}"}
+        "/api/v1/users/me", headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 200
 
     # Logout
     logout_response = await client.post(
-        "/api/v1/logout",
-        headers={"Authorization": f"Bearer {token}"}
+        "/api/v1/logout", headers={"Authorization": f"Bearer {token}"}
     )
     assert logout_response.status_code == 200
 
     # Try to use token again (should fail)
     response = await client.get(
-        "/api/v1/users/me",
-        headers={"Authorization": f"Bearer {token}"}
+        "/api/v1/users/me", headers={"Authorization": f"Bearer {token}"}
     )
     assert response.status_code == 401
-
-

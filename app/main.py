@@ -44,5 +44,3 @@ app.include_router(health_router)
 
 # Include versioned API routes
 app.include_router(router, prefix=settings.V1_STR)
-
-

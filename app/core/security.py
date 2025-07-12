@@ -52,6 +52,7 @@ class OAuth2Error(Exception):
 
 class TokenType(str, Enum):
     """Token type enumeration."""
+
     ACCESS = "access"
     REFRESH = "refresh"
 
@@ -68,7 +69,7 @@ class TokenService:
         user: User,
         token_type: TokenType,
         expires_delta: timedelta,
-        jti_length: int = 8
+        jti_length: int = 8,
     ) -> str:
         """Create a JWT token with common logic."""
         expire = datetime.now(timezone.utc) + expires_delta
@@ -78,7 +79,7 @@ class TokenService:
             "type": token_type.value,
             "exp": expire,
             "iat": datetime.now(timezone.utc),
-            "jti": secrets.token_urlsafe(jti_length)
+            "jti": secrets.token_urlsafe(jti_length),
         }
 
         return jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
@@ -87,7 +88,7 @@ class TokenService:
         self,
         user: User,
         expires_delta: timedelta | None = None,
-        default_expire_minutes: int = 30
+        default_expire_minutes: int = 30,
     ) -> str:
         """Create a JWT access token for a user."""
         if expires_delta is None:
@@ -99,7 +100,7 @@ class TokenService:
         self,
         user: User,
         expires_delta: timedelta | None = None,
-        default_expire_days: int = 7
+        default_expire_days: int = 7,
     ) -> str:
         """Create a JWT refresh token for a user."""
         if expires_delta is None:
@@ -107,7 +108,9 @@ class TokenService:
 
         return self._create_token(user, TokenType.REFRESH, expires_delta, jti_length=16)
 
-    def _decode_token(self, token: str, expected_type: TokenType) -> dict[str, Any] | None:
+    def _decode_token(
+        self, token: str, expected_type: TokenType
+    ) -> dict[str, Any] | None:
         """Decode and validate a JWT token with common logic."""
         try:
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
@@ -141,21 +144,23 @@ class TokenService:
 def get_token_service() -> TokenService:
     """Get configured TokenService instance."""
     from app.core.config import settings
+
     return TokenService(
-        secret_key=settings.SECRET_KEY.get_secret_value(),
-        algorithm=settings.ALGORITHM
+        secret_key=settings.SECRET_KEY.get_secret_value(), algorithm=settings.ALGORITHM
     )
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plaintext password against its hash using bcrypt."""
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+    )
 
 
 def get_password_hash(password: str) -> str:
     """Hash a password using bcrypt."""
     salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
 
 
 def convert_user_model_to_schema(user_model: UserModel) -> UserInDB:
@@ -165,7 +170,7 @@ def convert_user_model_to_schema(user_model: UserModel) -> UserInDB:
         email=user_model.email,
         full_name=user_model.full_name,
         disabled=not user_model.is_active,
-        hashed_password=user_model.hashed_password
+        hashed_password=user_model.hashed_password,
     )
 
 
@@ -175,7 +180,7 @@ def convert_user_in_db_to_user(user_in_db: UserInDB) -> User:
         username=user_in_db.username,
         email=user_in_db.email,
         full_name=user_in_db.full_name,
-        disabled=user_in_db.disabled
+        disabled=user_in_db.disabled,
     )
 
 
@@ -191,7 +196,9 @@ async def get_user(session: AsyncSession, username: str) -> UserInDB | None:
     return convert_user_model_to_schema(user_model)
 
 
-async def user_exists(session: AsyncSession, username: str, email: str) -> dict[str, bool]:
+async def user_exists(
+    session: AsyncSession, username: str, email: str
+) -> dict[str, bool]:
     """Check if username or email already exists."""
     # Check username
     username_stmt = select(UserModel).where(UserModel.username == username)
@@ -203,13 +210,12 @@ async def user_exists(session: AsyncSession, username: str, email: str) -> dict[
     email_result = await session.execute(email_stmt)
     email_exists = email_result.scalar_one_or_none() is not None
 
-    return {
-        "username_exists": username_exists,
-        "email_exists": email_exists
-    }
+    return {"username_exists": username_exists, "email_exists": email_exists}
 
 
-async def authenticate_user(session: AsyncSession, username: str, password: str) -> User | None:
+async def authenticate_user(
+    session: AsyncSession, username: str, password: str
+) -> User | None:
     """Authenticate a user with username and password."""
     user = await get_user(session, username)
     if not user:
@@ -222,7 +228,9 @@ async def authenticate_user(session: AsyncSession, username: str, password: str)
     return convert_user_in_db_to_user(user)
 
 
-async def create_user(session: AsyncSession, username: str, email: str, full_name: str, password: str) -> User:
+async def create_user(
+    session: AsyncSession, username: str, email: str, full_name: str, password: str
+) -> User:
     """Create a new user in the database."""
     hashed_password = get_password_hash(password)
 
@@ -232,7 +240,7 @@ async def create_user(session: AsyncSession, username: str, email: str, full_nam
         full_name=full_name,
         hashed_password=hashed_password,
         is_active=True,
-        is_superuser=False
+        is_superuser=False,
     )
 
     session.add(user_model)

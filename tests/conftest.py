@@ -18,21 +18,17 @@ from app.models.base import Base
 from app.models.user import User
 
 # Create PostgreSQL test factories
-postgresql_proc = factories.postgresql_proc(
-    port=None,
-    unixsocketdir='/tmp'
-)
-postgresql = factories.postgresql('postgresql_proc')
+postgresql_proc = factories.postgresql_proc(port=None, unixsocketdir="/tmp")
+postgresql = factories.postgresql("postgresql_proc")
+
 
 # Create a test limiter with no limits
 def get_test_client_ip(request: Request) -> str:
     """Test rate limiter that doesn't actually limit."""
     return "test-client"
 
-test_limiter = Limiter(
-    key_func=get_test_client_ip,
-    default_limits=["999999/minute"]
-)
+
+test_limiter = Limiter(key_func=get_test_client_ip, default_limits=["999999/minute"])
 
 
 @pytest_asyncio.fixture()
@@ -68,9 +64,11 @@ async def session(connection: AsyncConnection):
             username=settings.FIRST_USERNAME,
             email="test@example.com",
             full_name="Test User",
-            hashed_password=get_password_hash(settings.FIRST_PASSWORD.get_secret_value()),
+            hashed_password=get_password_hash(
+                settings.FIRST_PASSWORD.get_secret_value()
+            ),
             is_active=True,
-            is_superuser=False
+            is_superuser=False,
         )
         _session.add(test_user)
         await _session.commit()
@@ -102,7 +100,10 @@ def event_loop():
 
 @pytest_asyncio.fixture()
 async def client():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac, LifespanManager(app):
+    async with (
+        AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac,
+        LifespanManager(app),
+    ):
         yield ac
 
 
