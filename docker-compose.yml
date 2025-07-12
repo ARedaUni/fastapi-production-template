@@ -5,16 +5,16 @@ services:
     container_name: practicepython-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: practicepython
-      POSTGRES_USER: appuser
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_local_password}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U appuser -d practicepython"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-appuser} -d ${POSTGRES_DB:-practicepython}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,7 +32,7 @@ services:
     volumes:
       - redis_data:/data
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -53,28 +53,28 @@ services:
     restart: unless-stopped
     environment:
       # Database - Use Docker PostgreSQL service
-      POSTGRES_HOST: postgres
-      POSTGRES_DB: practicepython
-      POSTGRES_USER: appuser
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_local_password}
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       
       # Redis
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
       
       # Application
       PROJECT_NAME: ${PROJECT_NAME:-PracticePython}
-      ENVIRONMENT: ${ENVIRONMENT:-development}
-      SECRET_KEY: ${SECRET_KEY:-docker_development_secret_key_32_chars_minimum}
+      ENVIRONMENT: ${ENVIRONMENT}
+      SECRET_KEY: ${SECRET_KEY}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-7}
       
       # Initial User
-      FIRST_USERNAME: ${FIRST_USERNAME:-admin}
-      FIRST_PASSWORD: ${FIRST_PASSWORD:-admin_password_123}
+      FIRST_USERNAME: ${FIRST_USERNAME}
+      FIRST_PASSWORD: ${FIRST_PASSWORD}
       
       # CORS
-      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS:-}
+      BACKEND_CORS_ORIGINS: ${BACKEND_CORS_ORIGINS}
     ports:
       - "8000:8000"
     depends_on:
@@ -101,15 +101,15 @@ services:
     container_name: practicepython-migrate
     environment:
       # Database
-      POSTGRES_HOST: postgres
-      POSTGRES_DB: practicepython
-      POSTGRES_USER: appuser
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_local_password}
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       
       # Application
-      SECRET_KEY: ${SECRET_KEY:-docker_development_secret_key_32_chars_minimum}
-      FIRST_USERNAME: ${FIRST_USERNAME:-admin}
-      FIRST_PASSWORD: ${FIRST_PASSWORD:-admin_password_123}
+      SECRET_KEY: ${SECRET_KEY}
+      FIRST_USERNAME: ${FIRST_USERNAME}
+      FIRST_PASSWORD: ${FIRST_PASSWORD}
     depends_on:
       postgres:
         condition: service_healthy

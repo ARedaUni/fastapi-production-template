@@ -1,0 +1,54 @@
+# Docker Compose Override for Local Development
+# This file automatically overrides docker-compose.yml when running locally
+# It provides safe development values without touching your production .env
+
+services:
+  postgres:
+    environment:
+      POSTGRES_DB: practicepython_dev
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: local_dev_password_123
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d practicepython_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    environment:
+      # Database - Local Development
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: practicepython_dev
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: local_dev_password_123
+      
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      
+      # Application
+      PROJECT_NAME: PracticePython
+      ENVIRONMENT: development
+      SECRET_KEY: local_development_secret_key_32_chars_minimum_length
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      
+      # Initial User - YOUR LOGIN CREDENTIALS
+      FIRST_USERNAME: admin
+      FIRST_PASSWORD: admin123
+      
+      # CORS
+      BACKEND_CORS_ORIGINS: http://localhost:3000,http://localhost:8080,http://127.0.0.1:3000
+
+  migrate:
+    environment:
+      # Database
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: practicepython_dev
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: local_dev_password_123
+      
+      # Application
+      SECRET_KEY: local_development_secret_key_32_chars_minimum_length
+      FIRST_USERNAME: admin
+      FIRST_PASSWORD: admin123 
