@@ -1,7 +1,7 @@
-from typing import Any, Dict, Optional, Literal
+from typing import Any, Optional, Literal
 from functools import lru_cache
 
-from pydantic import EmailStr, SecretStr, field_validator, computed_field, BeforeValidator
+from pydantic import SecretStr, field_validator, computed_field, BeforeValidator
 from pydantic_settings import BaseSettings
 from typing_extensions import Annotated
 
