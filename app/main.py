@@ -6,6 +6,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from app.core.config import settings
 from app.api import router
+from app.api.health import router as health_router
 from app.core.security import OAuth2Error
 from app.api.exceptions import oauth2_exception_handler, validation_exception_handler
 from app.core.middleware import limiter, rate_limit_exceeded_handler
@@ -38,6 +39,10 @@ app.add_exception_handler(OAuth2Error, oauth2_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 
+# Include health endpoint at root level for orchestration tools
+app.include_router(health_router)
+
+# Include versioned API routes
 app.include_router(router, prefix=settings.V1_STR)
 
 
