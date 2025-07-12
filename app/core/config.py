@@ -47,8 +47,8 @@ class Settings(BaseSettings):
         )
     
     # Redis components - REQUIRED in production  
-    REDIS_HOST: str
-    REDIS_PORT: int = 6379
+    REDIS_HOST: str | None = None
+    REDIS_PORT: int | None = None
     
     # Environment
     ENVIRONMENT: Literal["development", "testing", "production"] = "development"
