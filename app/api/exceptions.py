@@ -1,13 +1,13 @@
 """FastAPI exception handlers."""
 
 from fastapi import Request
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from app.core.security import OAuth2Error
 
 
-async def oauth2_exception_handler(request: Request, exc: OAuth2Error):
+async def oauth2_exception_handler(request: Request, exc: OAuth2Error) -> JSONResponse:
     """Handle OAuth2Error exceptions with proper OAuth2 error format."""
     return JSONResponse(
         status_code=exc.status_code,
@@ -18,7 +18,7 @@ async def oauth2_exception_handler(request: Request, exc: OAuth2Error):
     )
 
 
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Handle validation errors with OAuth2 error format for token endpoints."""
     # Check if this is a token endpoint request
     if request.url.path.endswith("/token"):
@@ -33,4 +33,4 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=422,
         content={"detail": exc.errors()}
-    ) 
+    )

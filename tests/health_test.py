@@ -1,7 +1,6 @@
 import pytest
 
 
-
 @pytest.mark.asyncio
 async def test_health_check(client):
     """Test health check returns 204 when database is healthy."""

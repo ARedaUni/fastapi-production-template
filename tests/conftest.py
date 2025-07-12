@@ -4,11 +4,11 @@ from typing import Dict
 import pytest
 import pytest_asyncio
 from asgi_lifespan import LifespanManager
-from httpx import AsyncClient, ASGITransport
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, create_async_engine
-from slowapi import Limiter
 from fastapi import Request
+from httpx import ASGITransport, AsyncClient
 from pytest_postgresql import factories
+from slowapi import Limiter
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, create_async_engine
 
 from app.api.deps import get_session
 from app.core.config import settings
@@ -31,7 +31,7 @@ def get_test_client_ip(request: Request) -> str:
 
 test_limiter = Limiter(
     key_func=get_test_client_ip,
-    default_limits=["999999/minute"] 
+    default_limits=["999999/minute"]
 )
 
 
@@ -46,16 +46,16 @@ async def connection(postgresql):
         f"{postgresql.info.port}/"
         f"{postgresql.info.dbname}"
     )
-    
+
     engine = create_async_engine(database_url, echo=False)
-    
+
     async with engine.begin() as conn:
         # Create all tables
         await conn.run_sync(Base.metadata.create_all)
         yield conn
         # Clean up tables after test
         await conn.run_sync(Base.metadata.drop_all)
-    
+
     # Close the engine
     await engine.dispose()
 
@@ -81,13 +81,13 @@ async def session(connection: AsyncConnection):
 async def override_dependency(session: AsyncSession):
     # Override database dependency
     app.dependency_overrides[get_session] = lambda: session
-    
+
     # Override rate limiter for tests
     original_limiter = app.state.limiter
     app.state.limiter = test_limiter
-    
+
     yield
-    
+
     # Restore original limiter after test
     app.state.limiter = original_limiter
 

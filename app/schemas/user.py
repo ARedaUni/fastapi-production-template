@@ -28,4 +28,4 @@ class User(UserBase):
 
 class UserInDB(UserBase):
     """User schema as stored in database (with hashed password)."""
-    hashed_password: str 
+    hashed_password: str

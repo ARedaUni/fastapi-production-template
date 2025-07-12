@@ -9,12 +9,21 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_current_user
 from app.core.config import settings
 from app.core.database import get_session
-from app.schemas.token import Token, AccessTokenResponse, RefreshTokenRequest
+from app.core.security import (
+    OAuth2Error,
+    authenticate_user,
+    convert_user_in_db_to_user,
+    create_user,
+    get_token_blacklist,
+    get_token_service,
+    get_user,
+    user_exists,
+)
+from app.schemas.token import AccessTokenResponse, RefreshTokenRequest, Token
 from app.schemas.user import User, UserCreate
-from app.core.security import authenticate_user, get_user, create_user, user_exists, convert_user_in_db_to_user, get_token_service, OAuth2Error, get_token_blacklist
-from app.api.deps import get_current_user
 
 router = APIRouter()
 
@@ -29,19 +38,19 @@ async def register_user(
     """Register a new user."""
     # Check if username or email already exists
     existing = await user_exists(session, user_data.username, user_data.email)
-    
+
     if existing["username_exists"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already registered"
         )
-    
+
     if existing["email_exists"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    
+
     # Create new user
     user = await create_user(
         session=session,
@@ -50,7 +59,7 @@ async def register_user(
         full_name=user_data.full_name,
         password=user_data.password
     )
-    
+
     return user
 
 
@@ -67,22 +76,22 @@ async def login_for_access_token(
             error_description="Invalid username or password",
             status_code=status.HTTP_401_UNAUTHORIZED
         )
-    
+
     token_service = get_token_service()
-    
+
     # Create both tokens
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = token_service.create_access_token(
         user=user,
         expires_delta=access_token_expires
     )
-    
+
     refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     refresh_token = token_service.create_refresh_token(
         user=user,
         expires_delta=refresh_token_expires
     )
-    
+
     return Token(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -97,9 +106,9 @@ async def refresh_access_token(
     session: Annotated[AsyncSession, Depends(get_session)]
 ) -> AccessTokenResponse:
     """Use refresh token to get a new access token."""
-    
+
     token_service = get_token_service()
-    
+
     # Decode and validate refresh token
     payload = token_service.decode_refresh_token(refresh_request.refresh_token)
     if payload is None:
@@ -108,15 +117,15 @@ async def refresh_access_token(
             error_description="Invalid refresh token",
             status_code=status.HTTP_401_UNAUTHORIZED
         )
-    
-    username: str = payload.get("sub")
-    if username is None:
+
+    username = payload.get("sub")
+    if username is None or not isinstance(username, str):
         raise OAuth2Error(
             error="invalid_grant",
             error_description="Invalid refresh token",
             status_code=status.HTTP_401_UNAUTHORIZED
         )
-    
+
     # Get user from database
     user = await get_user(session, username)
     if user is None:
@@ -125,20 +134,20 @@ async def refresh_access_token(
             error_description="Invalid refresh token",
             status_code=status.HTTP_401_UNAUTHORIZED
         )
-    
+
     if user.disabled:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Inactive user"
         )
-    
+
     # Create new access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = token_service.create_access_token(
         user=convert_user_in_db_to_user(user),
         expires_delta=access_token_expires
     )
-    
+
     return AccessTokenResponse(
         access_token=access_token,
         token_type="bearer",
@@ -155,11 +164,11 @@ async def logout(
     # Extract JTI from token and blacklist it
     token_service = get_token_service()
     payload = token_service.decode_access_token(token)
-    
+
     if payload and payload.get("jti"):
         blacklist = get_token_blacklist()
         blacklist.blacklist_token(payload["jti"])
-    
+
     return {"message": "Successfully logged out"}
 
 
